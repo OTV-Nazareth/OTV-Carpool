@@ -233,9 +233,7 @@ let radiusCircle = null;
 let editingKindId = null;
 
 function getConfig() {
-
-  return {url: 'https://tiudkjkeiyxeaiaafhay.supabase.co',
-          key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpdWRramtlaXl4ZWFpYWFmaGF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1MDg5MDcsImV4cCI6MjA5NjA4NDkwN30.mJrBv2pVLQmNrslYZwtTdhRUUVpFrYzNBVBYvBgUUZ4'};
+  return { url: 'https://tiudkjkeiyxeaiaafhay.supabase.co', key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpdWRramtlaXl4ZWFpYWFmaGF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1MDg5MDcsImV4cCI6MjA5NjA4NDkwN30.mJrBv2pVLQmNrslYZwtTdhRUUVpFrYzNBVBYvBgUUZ4' };
 }
 function saveConfig() {
   const url = document.getElementById('cfg-url').value.trim();
@@ -343,11 +341,18 @@ async function register() {
     if (gd.length>0) { lat=parseFloat(gd[0].lat); lng=parseFloat(gd[0].lon); }
   } catch(e) {}
 
+  // Stap 1: account aanmaken
   const { data: authData, error: authErr } = await sbClient.auth.signUp({ email, password: pw });
   if (authErr) return showToast('❌ '+authErr.message);
 
+  // Stap 2: meteen inloggen zodat sessie actief is voor de profile insert
+  const { data: loginData, error: loginErr } = await sbClient.auth.signInWithPassword({ email, password: pw });
+  if (loginErr) return showToast('❌ Inloggen na registratie mislukt: '+loginErr.message);
+  currentUser = loginData.user;
+
+  // Stap 3: profiel aanmaken (nu met actieve sessie)
   const { error: profErr } = await sbClient.from('profiles').insert({
-    id: authData.user.id, voornaam: vnaam, achternaam: anaam,
+    id: currentUser.id, voornaam: vnaam, achternaam: anaam,
     straat, huisnummer: hnr||null, gemeente: gem, postcode: pc,
     lat, lng, telefoon: tel||null, carpool_actief: true
   });
@@ -355,7 +360,6 @@ async function register() {
 
   await sbClient.from('invite_codes').update({ used_count: codeData.used_count+1 }).eq('code',code);
   showToast('✅ Account aangemaakt! Voeg nu je kind(eren) toe.');
-  currentUser = authData.user;
   await loadProfile();
 }
 
