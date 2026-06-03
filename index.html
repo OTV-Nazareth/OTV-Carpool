@@ -175,6 +175,10 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;heigh
         <div class="card-title">👥 Matches in de buurt</div>
         <div id="quick-matches"><div style="color:var(--muted);font-size:0.9rem;">Laden...</div></div>
       </div>
+      <div class="card" id="mijn-matches-card" style="display:none;">
+        <div class="card-title">✅ Mijn matches</div>
+        <div id="mijn-matches-list"></div>
+      </div>
       <div class="card" id="pending-requests-card" style="display:none;">
         <div class="card-title">🔔 Openstaande verzoeken</div>
         <div id="pending-requests-list"></div>
@@ -409,6 +413,7 @@ async function loadProfile() {
     await loadTrainingen();
     await loadNextTraining();
     await loadPendingRequests();
+    await loadMijnMatches();
   }
   initMap();
 }
@@ -641,6 +646,14 @@ async function loadMatches() {
   const verzMap = {};
   (mijnVerzoeken||[]).forEach(v=>{verzMap[v.naar_id]=v.status;});
 
+  // Haal contactinfo op van geaccepteerde matches
+  const acceptedIds = (mijnVerzoeken||[]).filter(v=>v.status==='accepted').map(v=>v.naar_id);
+  const acceptedContacts = {};
+  if (acceptedIds.length) {
+    const { data: contacts } = await sbClient.from('profiles').select('id, telefoon').in('id', acceptedIds);
+    (contacts||[]).forEach(c=>{ acceptedContacts[c.id]=c.telefoon||''; });
+  }
+
   list.innerHTML = `
     <div style="display:flex;gap:1rem;margin-bottom:0.75rem;flex-wrap:wrap;align-items:center;">
       <span style="font-size:0.82rem;color:var(--muted);"><span style="color:#6dce9a;">●</span> Binnen straal &nbsp;<span style="color:#6d9de8;">●</span> Verder</span>
@@ -651,7 +664,13 @@ async function loadMatches() {
       const inRadius = o.dist!==null&&o.dist<=radius/1000;
       const distStr = o.dist!==null?`${o.dist.toFixed(1)} km`:'onbekend';
       let btn = '';
-      if (status==='accepted') btn=`<span class="badge badge-success">✓ Gematcht</span>`;
+      if (status==='accepted') {
+        const tel = acceptedContacts[o.id]||'';
+        btn=`<div style="display:flex;flex-direction:column;align-items:flex-end;gap:0.3rem;">
+          <span class="badge badge-success">✓ Gematcht</span>
+          ${tel?`<span style="font-size:0.82rem;color:var(--success);">📞 ${tel}</span>`:''}
+        </div>`;
+      }
       else if (status==='pending') btn=`<span class="badge badge-blue">⏳ Wachten</span>`;
       else if (status==='declined') btn=`<span class="badge badge-danger">✗ Geweigerd</span>`;
       else btn=`<button class="btn btn-secondary btn-sm" onclick="sendRequest('${o.id}','${trainingId}')">Vraag aan 🚗</button>`;
@@ -665,6 +684,37 @@ async function loadMatches() {
           <div class="match-actions">${btn}</div>
         </div>`;
     }).join('')}`;
+}
+
+async function loadMijnMatches() {
+  // Laad alle geaccepteerde matches (beide richtingen)
+  const { data: sent } = await sbClient.from('carpool_requests')
+    .select('*, naar:naar_id(voornaam, gemeente, telefoon), trainingen(dag, start_tijd, zalen(naam))')
+    .eq('van_id', currentProfile.id).eq('status','accepted');
+  const { data: received } = await sbClient.from('carpool_requests')
+    .select('*, van:van_id(voornaam, gemeente, telefoon), trainingen(dag, start_tijd, zalen(naam))')
+    .eq('naar_id', currentProfile.id).eq('status','accepted');
+
+  const alle = [
+    ...(sent||[]).map(r=>({ naam: r.naar?.voornaam, gemeente: r.naar?.gemeente, telefoon: r.naar?.telefoon, training: r.trainingen })),
+    ...(received||[]).map(r=>({ naam: r.van?.voornaam, gemeente: r.van?.gemeente, telefoon: r.van?.telefoon, training: r.trainingen }))
+  ];
+
+  const card = document.getElementById('mijn-matches-card');
+  const list = document.getElementById('mijn-matches-list');
+  if (!card||!list) return;
+
+  if (!alle.length) { card.style.display='none'; return; }
+  card.style.display='block';
+  list.innerHTML = alle.map(m=>`
+    <div class="match-card">
+      <div class="match-avatar">${m.naam?.[0]||'?'}</div>
+      <div class="match-info">
+        <div class="match-name">${m.naam||'?'} · ${m.gemeente||'?'}</div>
+        <div class="match-meta">🗓 ${m.training?.dag||''} ${m.training?.start_tijd||''} · ${m.training?.zalen?.naam||''}</div>
+        ${m.telefoon?`<div style="margin-top:0.3rem;color:var(--success);font-size:0.85rem;font-weight:600;">📞 ${m.telefoon}</div>`:'<div style="color:var(--muted);font-size:0.82rem;margin-top:0.2rem;">Geen telefoonnummer opgegeven</div>'}
+      </div>
+    </div>`).join('');
 }
 
 async function sendRequest(naarId, trainingId) {
@@ -697,9 +747,11 @@ async function loadPendingRequests() {
 
 async function respondRequest(requestId, status, telefoon) {
   await sbClient.from('carpool_requests').update({status,updated_at:new Date().toISOString()}).eq('id',requestId);
-  if (status==='accepted'&&telefoon) showToast(`✅ Geaccepteerd! Tel: ${telefoon}`);
-  else showToast(status==='accepted'?'✅ Verzoek geaccepteerd':'Verzoek geweigerd');
+  if (status==='accepted') showToast('✅ Verzoek geaccepteerd! Contactinfo zichtbaar onder Mijn matches.');
+  else showToast('Verzoek geweigerd');
   await loadPendingRequests();
+  await loadMatches();
+  await loadMijnMatches();
 }
 
 // ═══════════════════════════════════════
