@@ -2,120 +2,289 @@
 <html lang="nl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="theme-color" content="#1a1f2e">
-<meta name="description" content="Samenrijden naar de training - Gymnastiékclub Nazareth">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#1a1a2e">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <title>RijdMee · Gymclub Nazareth</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 :root {
-  --bg:#0f1219;--bg2:#161b27;--bg3:#1e2535;
-  --border:rgba(255,255,255,0.08);--text:#e8eaf0;--muted:#7a8099;
-  --accent:#e8b86d;--accent2:#6d9de8;--success:#6dce9a;--danger:#e86d6d;
-  --radius:12px;
-  --font-display:'DM Serif Display',Georgia,serif;
-  --font-body:'DM Sans',system-ui,sans-serif;
+  --bg:#1a1a2e;--bg2:#16213e;--bg3:#0f3460;
+  --surface:#1e2a45;--surface2:#243352;
+  --border:rgba(255,255,255,0.07);
+  --text:#e8edf5;--muted:#8899bb;--faint:#4a5a7a;
+  --accent:#e94560;--accent2:#4cc9f0;--gold:#f7b731;
+  --success:#2ecc71;--danger:#e74c3c;
+  --font:'Outfit',system-ui,sans-serif;
+  --sheet-radius:20px;
+  --bottom-nav:64px;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{font-family:var(--font-body);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
-h1,h2,h3{font-family:var(--font-display);font-weight:400}
-h1{font-size:clamp(2rem,5vw,3rem)}h2{font-size:1.5rem}
-.app{display:flex;flex-direction:column;min-height:100vh}
-header{padding:1rem 1.5rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);background:var(--bg2);position:sticky;top:0;z-index:100}
-.logo{font-family:var(--font-display);font-size:1.4rem;color:var(--accent);letter-spacing:-0.02em}
-.logo span{color:var(--muted);font-size:0.9rem;font-family:var(--font-body);display:block;font-weight:300}
-nav{display:flex;gap:0.5rem}
-nav button{background:none;border:1px solid var(--border);color:var(--muted);padding:0.4rem 0.9rem;border-radius:20px;font-family:var(--font-body);font-size:0.85rem;cursor:pointer;transition:all 0.2s}
-nav button.active,nav button:hover{background:var(--bg3);color:var(--text);border-color:var(--accent)}
-main{flex:1;padding:1.5rem;max-width:900px;margin:0 auto;width:100%}
-.view{display:none;animation:fadeIn 0.3s ease}
-.view.active{display:block}
-@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem;margin-bottom:1rem}
-.card-title{font-family:var(--font-display);font-size:1.1rem;color:var(--accent);margin-bottom:1rem;display:flex;align-items:center;gap:0.5rem}
-.form-group{margin-bottom:1rem}
-label{display:block;font-size:0.85rem;color:var(--muted);margin-bottom:0.35rem;font-weight:500}
-input,select,textarea{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:0.65rem 0.9rem;font-family:var(--font-body);font-size:0.95rem;transition:border-color 0.2s}
-input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent)}
-input::placeholder{color:var(--muted)}
-select option{background:var(--bg3)}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:0.4rem;padding:0.65rem 1.3rem;border-radius:8px;border:none;font-family:var(--font-body);font-size:0.95rem;font-weight:500;cursor:pointer;transition:all 0.2s}
-.btn-primary{background:var(--accent);color:#0f1219}.btn-primary:hover{background:#f0c87a}
-.btn-secondary{background:var(--bg3);color:var(--text);border:1px solid var(--border)}.btn-secondary:hover{border-color:var(--accent)}
-.btn-success{background:var(--success);color:#0f1219}
+html,body{height:100%;overflow:hidden;font-family:var(--font);background:var(--bg);color:var(--text)}
+
+/* ── MAP FULL SCREEN ── */
+#map {
+  position:fixed;inset:0;z-index:0;
+  filter:brightness(0.9) saturate(0.8);
+}
+.leaflet-tile { filter:invert(100%) hue-rotate(180deg) brightness(0.75) contrast(0.85) saturate(0.7); }
+.leaflet-container { background:#0d1117 !important; }
+
+/* ── BOTTOM NAV ── */
+#bottom-nav {
+  position:fixed;bottom:0;left:0;right:0;
+  height:var(--bottom-nav);
+  background:rgba(22,33,62,0.97);
+  backdrop-filter:blur(20px);
+  border-top:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-around;
+  z-index:200;
+  padding-bottom:env(safe-area-inset-bottom);
+}
+.nav-btn {
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:3px;background:none;border:none;cursor:pointer;
+  color:var(--faint);font-family:var(--font);font-size:0.65rem;font-weight:500;
+  letter-spacing:0.04em;text-transform:uppercase;padding:8px 4px;
+  transition:color 0.2s;
+}
+.nav-btn .icon{font-size:1.3rem;line-height:1;transition:transform 0.2s}
+.nav-btn.active{color:var(--accent)}
+.nav-btn.active .icon{transform:scale(1.15)}
+
+/* ── BOTTOM SHEET ── */
+.sheet {
+  position:fixed;left:0;right:0;bottom:var(--bottom-nav);
+  background:var(--bg2);
+  border-radius:var(--sheet-radius) var(--sheet-radius) 0 0;
+  z-index:150;
+  transform:translateY(100%);
+  transition:transform 0.35s cubic-bezier(0.32,0.72,0,1);
+  max-height:82vh;
+  display:flex;flex-direction:column;
+  box-shadow:0 -8px 40px rgba(0,0,0,0.5);
+}
+.sheet.open { transform:translateY(0); }
+.sheet-handle {
+  width:40px;height:4px;background:var(--faint);border-radius:2px;
+  margin:12px auto 0;flex-shrink:0;
+}
+.sheet-header {
+  padding:12px 20px 0;flex-shrink:0;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.sheet-title {
+  font-size:1.2rem;font-weight:700;color:var(--text);
+}
+.sheet-close {
+  width:28px;height:28px;border-radius:50%;background:var(--surface2);border:none;
+  color:var(--muted);font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;
+}
+.sheet-body {
+  padding:16px 20px;overflow-y:auto;flex:1;
+  padding-bottom:calc(16px + env(safe-area-inset-bottom));
+}
+
+/* ── TOP BAR ── */
+#top-bar {
+  position:fixed;top:0;left:0;right:0;z-index:100;
+  padding:env(safe-area-inset-top) 16px 0;
+  pointer-events:none;
+}
+.top-bar-inner {
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 0;pointer-events:all;
+}
+.logo-pill {
+  background:rgba(22,33,62,0.95);backdrop-filter:blur(20px);
+  border:1px solid var(--border);border-radius:20px;
+  padding:6px 14px;
+  font-size:1rem;font-weight:700;color:var(--accent);letter-spacing:-0.01em;
+}
+.logo-pill span{color:var(--muted);font-weight:400;font-size:0.8rem;margin-left:4px;}
+.top-pill-btn {
+  background:rgba(22,33,62,0.95);backdrop-filter:blur(20px);
+  border:1px solid var(--border);border-radius:20px;
+  padding:6px 14px;color:var(--text);font-family:var(--font);
+  font-size:0.85rem;cursor:pointer;
+}
+
+/* ── FLOATING ACTION ── */
+#fab {
+  position:fixed;right:16px;bottom:calc(var(--bottom-nav) + 16px);
+  width:52px;height:52px;border-radius:50%;
+  background:var(--accent);color:#fff;border:none;
+  font-size:1.4rem;cursor:pointer;z-index:160;
+  box-shadow:0 4px 20px rgba(233,69,96,0.5);
+  display:flex;align-items:center;justify-content:center;
+  transition:transform 0.2s,box-shadow 0.2s;
+}
+#fab:hover{transform:scale(1.08);box-shadow:0 6px 24px rgba(233,69,96,0.6)}
+
+/* ── CARDS & FORMS ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:12px}
+.card-title{font-size:0.75rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px}
+.form-group{margin-bottom:14px}
+label{display:block;font-size:0.8rem;color:var(--muted);margin-bottom:5px;font-weight:500}
+input,select,textarea{
+  width:100%;background:var(--surface2);border:1px solid var(--border);
+  border-radius:10px;color:var(--text);padding:10px 12px;
+  font-family:var(--font);font-size:0.9rem;transition:border-color 0.2s;
+}
+input:focus,select:focus{outline:none;border-color:var(--accent)}
+input::placeholder{color:var(--faint)}
+select option{background:var(--bg2)}
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  padding:10px 18px;border-radius:10px;border:none;
+  font-family:var(--font);font-size:0.9rem;font-weight:600;cursor:pointer;
+  transition:all 0.2s;
+}
+.btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{background:#d63651}
+.btn-secondary{background:var(--surface2);color:var(--text);border:1px solid var(--border)}.btn-secondary:hover{border-color:var(--accent)}
+.btn-success{background:var(--success);color:#fff}
 .btn-danger{background:var(--danger);color:#fff}
-.btn-ghost{background:none;border:none;color:var(--muted);padding:0.3rem 0.6rem;font-size:0.82rem;cursor:pointer}
-.btn-ghost:hover{color:var(--danger)}
-.btn-sm{padding:0.35rem 0.8rem;font-size:0.82rem}
-.btn:disabled{opacity:0.5;cursor:not-allowed}
+.btn-ghost{background:none;border:none;color:var(--muted);font-family:var(--font);font-size:0.85rem;cursor:pointer;padding:6px 10px}
+.btn-sm{padding:6px 12px;font-size:0.8rem}
 .btn-full{width:100%}
-.badge{display:inline-block;padding:0.2rem 0.6rem;border-radius:20px;font-size:0.75rem;font-weight:600}
-.badge-accent{background:rgba(232,184,109,0.15);color:var(--accent)}
-.badge-blue{background:rgba(109,157,232,0.15);color:var(--accent2)}
-.badge-success{background:rgba(109,206,154,0.15);color:var(--success)}
-.badge-danger{background:rgba(232,109,109,0.15);color:var(--danger)}
-#map{height:320px;border-radius:var(--radius);border:1px solid var(--border);margin:1rem 0;overflow:hidden}
-.match-card{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:1rem 1.2rem;margin-bottom:0.75rem;display:flex;align-items:center;gap:1rem;transition:border-color 0.2s}
-.match-card:hover{border-color:var(--accent)}
-.match-avatar{width:44px;height:44px;border-radius:50%;background:var(--bg2);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-size:1.2rem;color:var(--accent);flex-shrink:0}
-.match-info{flex:1}.match-name{font-weight:600;font-size:0.95rem}.match-meta{color:var(--muted);font-size:0.82rem;margin-top:0.2rem}
-.match-actions{display:flex;gap:0.5rem}
-.slot{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:0.9rem 1.1rem;margin-bottom:0.6rem;display:flex;align-items:center;justify-content:space-between;gap:1rem}
-.slot-time{font-family:var(--font-display);font-size:1.1rem;color:var(--accent)}
-.slot-detail{color:var(--muted);font-size:0.83rem;margin-top:0.15rem}
-.admin-table{width:100%;border-collapse:collapse;font-size:0.88rem}
-.admin-table th{text-align:left;color:var(--muted);padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);font-weight:500}
-.admin-table td{padding:0.6rem 0.8rem;border-bottom:1px solid rgba(255,255,255,0.04)}
-.alert{padding:0.75rem 1rem;border-radius:8px;font-size:0.9rem;margin-bottom:1rem;display:flex;align-items:center;gap:0.5rem}
-.alert-info{background:rgba(109,157,232,0.1);border:1px solid rgba(109,157,232,0.3);color:var(--accent2)}
-.alert-success{background:rgba(109,206,154,0.1);border:1px solid rgba(109,206,154,0.3);color:var(--success)}
-.alert-error{background:rgba(232,109,109,0.1);border:1px solid rgba(232,109,109,0.3);color:var(--danger)}
-.alert-warn{background:rgba(232,184,109,0.1);border:1px solid rgba(232,184,109,0.3);color:var(--accent)}
-.tabs{display:flex;gap:0.3rem;margin-bottom:1.5rem;border-bottom:1px solid var(--border);padding-bottom:0}
-.tab{padding:0.5rem 1rem;background:none;border:none;color:var(--muted);font-family:var(--font-body);font-size:0.9rem;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all 0.2s}
-.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
-.tab-content{display:none}.tab-content.active{display:block}
-.hero{text-align:center;padding:3rem 1rem}
-.hero-icon{font-size:3.5rem;margin-bottom:1rem}
-.hero h1{color:var(--accent);margin-bottom:0.75rem}
-.hero p{color:var(--muted);max-width:420px;margin:0 auto 2rem;line-height:1.6}
-.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
-@media(max-width:600px){.grid-2{grid-template-columns:1fr}}
-.divider{border:none;border-top:1px solid var(--border);margin:1.5rem 0}
-.route-controls{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;margin-bottom:1rem}
-.range-label{display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem}
-input[type=range]{-webkit-appearance:none;background:var(--bg2);height:4px;border-radius:2px;border:none;padding:0}
-input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--accent);cursor:pointer}
-#toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(100px);background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:0.75rem 1.5rem;border-radius:20px;font-size:0.9rem;z-index:999;transition:transform 0.3s ease;white-space:nowrap}
-#toast.show{transform:translateX(-50%) translateY(0)}
-.spinner{display:inline-block;width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.7s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-#config-screen{display:none;position:fixed;inset:0;background:var(--bg);z-index:999;padding:2rem;overflow-y:auto}
-#config-screen.visible{display:flex;align-items:flex-start;justify-content:center}
-.leaflet-tile{filter:invert(100%) hue-rotate(180deg) brightness(0.85) contrast(0.9)}
-/* Kind kaart */
-.kind-card{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:0.9rem 1.1rem;margin-bottom:0.6rem;display:flex;align-items:center;justify-content:space-between;gap:0.75rem}
-.kind-label{font-weight:600;font-size:0.95rem}
-.kind-groep{color:var(--muted);font-size:0.82rem;margin-top:0.15rem}
-/* Modal */
-.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:200;align-items:center;justify-content:center;padding:1rem}
+.btn:disabled{opacity:0.4;cursor:not-allowed}
+
+/* ── BADGES ── */
+.badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:0.72rem;font-weight:600}
+.badge-red{background:rgba(233,69,96,0.15);color:var(--accent)}
+.badge-blue{background:rgba(76,201,240,0.15);color:var(--accent2)}
+.badge-green{background:rgba(46,204,113,0.15);color:var(--success)}
+.badge-gold{background:rgba(247,183,49,0.15);color:var(--gold)}
+.badge-muted{background:var(--surface2);color:var(--muted)}
+
+/* ── ALERTS ── */
+.alert{padding:10px 14px;border-radius:10px;font-size:0.85rem;margin-bottom:12px;display:flex;align-items:flex-start;gap:8px}
+.alert-info{background:rgba(76,201,240,0.1);border:1px solid rgba(76,201,240,0.25);color:var(--accent2)}
+.alert-warn{background:rgba(247,183,49,0.1);border:1px solid rgba(247,183,49,0.25);color:var(--gold)}
+.alert-success{background:rgba(46,204,113,0.1);border:1px solid rgba(46,204,113,0.25);color:var(--success)}
+.alert-error{background:rgba(231,76,60,0.1);border:1px solid rgba(231,76,60,0.25);color:var(--danger)}
+
+/* ── MATCH ROWS ── */
+.match-row{
+  display:flex;align-items:center;gap:12px;
+  padding:12px 0;border-bottom:1px solid var(--border);
+}
+.match-row:last-child{border-bottom:none}
+.avatar{
+  width:40px;height:40px;border-radius:50%;
+  background:var(--bg3);border:2px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+  font-size:1rem;font-weight:700;color:var(--accent);flex-shrink:0;
+}
+.match-info{flex:1;min-width:0}
+.match-name{font-weight:600;font-size:0.92rem}
+.match-meta{color:var(--muted);font-size:0.78rem;margin-top:2px}
+.match-tel{color:var(--success);font-size:0.82rem;font-weight:600;margin-top:3px}
+.match-actions{display:flex;gap:6px;flex-shrink:0}
+
+/* ── TRAINING ROWS ── */
+.training-row{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 0;border-bottom:1px solid var(--border);gap:12px;
+}
+.training-row:last-child{border-bottom:none}
+.training-time{font-size:1.1rem;font-weight:700;color:var(--accent2);white-space:nowrap}
+.training-detail{color:var(--muted);font-size:0.78rem;margin-top:2px}
+
+/* ── KIND ROWS ── */
+.kind-row{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 0;border-bottom:1px solid var(--border);
+}
+.kind-row:last-child{border-bottom:none}
+
+/* ── ADMIN TABLE ── */
+.admin-table{width:100%;border-collapse:collapse;font-size:0.82rem}
+.admin-table th{text-align:left;color:var(--muted);padding:6px 8px;border-bottom:1px solid var(--border);font-weight:500}
+.admin-table td{padding:7px 8px;border-bottom:1px solid rgba(255,255,255,0.03)}
+
+/* ── RANGE ── */
+input[type=range]{-webkit-appearance:none;background:var(--surface2);height:4px;border-radius:2px;border:none;padding:0}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:var(--accent);cursor:pointer}
+
+/* ── MODAL ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:500;align-items:flex-end;justify-content:center}
 .modal-overlay.open{display:flex}
-.modal{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem;width:100%;max-width:440px;max-height:90vh;overflow-y:auto}
-.modal-title{font-family:var(--font-display);font-size:1.2rem;color:var(--accent);margin-bottom:1.25rem}
+.modal{background:var(--bg2);border-radius:var(--sheet-radius) var(--sheet-radius) 0 0;padding:20px;width:100%;max-height:85vh;overflow-y:auto;padding-bottom:calc(20px + env(safe-area-inset-bottom))}
+.modal-title{font-size:1.1rem;font-weight:700;margin-bottom:16px}
+
+/* ── HERO (auth) ── */
+.hero{text-align:center;padding:40px 20px 20px}
+.hero-icon{font-size:3rem;margin-bottom:12px}
+.hero h1{font-size:2rem;font-weight:700;color:var(--accent);margin-bottom:8px}
+.hero p{color:var(--muted);font-size:0.9rem;line-height:1.6;max-width:360px;margin:0 auto 24px}
+
+/* ── AUTH CARD (full screen scroll) ── */
+#auth-screen{
+  position:fixed;inset:0;z-index:300;
+  background:var(--bg);overflow-y:auto;
+  padding:0 16px calc(32px + env(safe-area-inset-bottom));
+}
+
+/* ── CONFIG SCREEN ── */
+#config-screen{display:none;position:fixed;inset:0;background:var(--bg);z-index:999;padding:24px;overflow-y:auto}
+#config-screen.visible{display:block}
+
+/* ── TOAST ── */
+#toast{
+  position:fixed;bottom:calc(var(--bottom-nav) + 12px);left:50%;
+  transform:translateX(-50%) translateY(20px);
+  background:var(--surface);border:1px solid var(--border);
+  color:var(--text);padding:10px 20px;border-radius:20px;
+  font-size:0.88rem;z-index:999;opacity:0;
+  transition:all 0.3s;white-space:nowrap;pointer-events:none;
+}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── SPINNER ── */
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── GRID ── */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+/* ── RADIUS CONTROL ── */
+.radius-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+
+/* ── SECTIE HEADER ── */
+.section-header{
+  display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;
+}
+.section-title{font-size:1rem;font-weight:700}
+
+/* ── DAG HEADER ── */
+.dag-header{
+  font-size:0.72rem;font-weight:600;color:var(--muted);
+  text-transform:uppercase;letter-spacing:0.1em;
+  padding:14px 0 6px;
+}
+
+/* ── NOTIFICATION DOT ── */
+.notif-dot{
+  position:absolute;top:6px;right:calc(50% - 14px);
+  width:7px;height:7px;border-radius:50%;
+  background:var(--accent);border:1.5px solid var(--bg2);
+}
+.nav-btn{position:relative}
 </style>
 </head>
 <body>
 
 <!-- CONFIG SCREEN -->
 <div id="config-screen">
-  <div style="max-width:520px;width:100%;padding-top:2rem;">
-    <div class="hero-icon">⚙️</div>
-    <h2 style="font-family:var(--font-display);color:var(--accent);margin-bottom:0.5rem;">Supabase configuratie</h2>
-    <p style="color:var(--muted);margin-bottom:1.5rem;font-size:0.9rem;">Vul je Supabase project-gegevens in. Je vindt deze in het Supabase dashboard onder Settings → API.</p>
+  <div style="max-width:480px;margin:0 auto;padding-top:40px;">
+    <div style="font-size:2.5rem;margin-bottom:12px;">⚙️</div>
+    <h2 style="font-size:1.4rem;font-weight:700;color:var(--accent);margin-bottom:8px;">Supabase configuratie</h2>
+    <p style="color:var(--muted);font-size:0.85rem;margin-bottom:20px;">Vul je Supabase project-gegevens in. Te vinden onder Settings → API.</p>
     <div class="card">
       <div class="form-group"><label>Supabase URL</label><input type="text" id="cfg-url" placeholder="https://xxxx.supabase.co"></div>
       <div class="form-group"><label>Supabase Anon Key</label><input type="text" id="cfg-key" placeholder="eyJhbGci..."></div>
@@ -124,160 +293,25 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;heigh
   </div>
 </div>
 
-<!-- KIND MODAL -->
-<div class="modal-overlay" id="kind-modal">
-  <div class="modal">
-    <div class="modal-title" id="kind-modal-title">Kind toevoegen</div>
-    <div class="form-group">
-      <label>Label</label>
-      <input type="text" id="kind-label" placeholder="Kind 1, Kind 2, ...">
-    </div>
-    <div class="form-group">
-      <label>Groep</label>
-      <select id="kind-groep"><option value="">Laden...</option></select>
-    </div>
-    <div style="display:flex;gap:0.75rem;margin-top:0.5rem;">
-      <button class="btn btn-primary" onclick="saveKind()" style="flex:1">Opslaan</button>
-      <button class="btn btn-secondary" onclick="closeKindModal()">Annuleer</button>
-    </div>
-  </div>
-</div>
-
-<!-- APP -->
-<div class="app" id="app" style="display:none;">
-<header>
-  <div class="logo">RijdMee<span>Gymclub Nazareth</span></div>
-  <nav id="main-nav">
-    <button class="active" onclick="showView('home')">🏠</button>
-    <button onclick="showView('trainingen')">📅</button>
-    <button onclick="showView('matches')">🚗</button>
-    <button onclick="showView('profiel')">👤</button>
-  </nav>
-</header>
-<main>
-
-  <!-- HOME -->
-  <div class="view active" id="view-home">
-    <div id="auth-container"></div>
-    <div id="home-content" style="display:none;">
-      <div style="margin-bottom:1.5rem;">
-        <div style="color:var(--muted);font-size:0.85rem;margin-bottom:0.25rem;">Welkom terug,</div>
-        <h2 id="welcome-name" style="font-family:var(--font-display);color:var(--accent);"></h2>
-      </div>
-      <div id="geen-kinderen-alert" style="display:none;">
-        <div class="alert alert-warn">👶 Voeg eerst een kind toe via je profiel om trainingen en matches te zien.</div>
-      </div>
-      <div class="card">
-        <div class="card-title">🚗 Volgende training</div>
-        <div id="next-training-widget"><div style="color:var(--muted);font-size:0.9rem;">Laden...</div></div>
-      </div>
-      <div class="card">
-        <div class="card-title">👥 Matches in de buurt</div>
-        <div id="quick-matches"><div style="color:var(--muted);font-size:0.9rem;">Laden...</div></div>
-      </div>
-      <div class="card" id="mijn-matches-card" style="display:none;">
-        <div class="card-title">✅ Mijn matches</div>
-        <div id="mijn-matches-list"></div>
-      </div>
-      <div class="card" id="pending-requests-card" style="display:none;">
-        <div class="card-title">🔔 Openstaande verzoeken</div>
-        <div id="pending-requests-list"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- TRAININGEN -->
-  <div class="view" id="view-trainingen">
-    <h2 style="margin-bottom:1.5rem;color:var(--accent);">📅 Mijn trainingen</h2>
-    <div id="trainingen-list"><div style="color:var(--muted);">Laden...</div></div>
-  </div>
-
-  <!-- MATCHES -->
-  <div class="view" id="view-matches">
-    <h2 style="margin-bottom:0.5rem;color:var(--accent);">🚗 Rijdgenoten zoeken</h2>
-    <p style="color:var(--muted);font-size:0.85rem;margin-bottom:1.5rem;">Selecteer een training om te zien wie er meerijdt vanuit jouw richting.</p>
-    <div class="form-group">
-      <label>Kies training</label>
-      <select id="match-training-select" onchange="loadMatches()"><option value="">— Selecteer —</option></select>
-    </div>
-    <div class="route-controls">
-      <div class="range-label">
-        <label style="margin:0;">📍 Ophaalstraal</label>
-        <span id="radius-value" style="color:var(--accent);font-weight:600;">5 km</span>
-      </div>
-      <input type="range" id="radius-slider" min="1" max="30" value="5" oninput="updateRadius(this.value)">
-    </div>
-    <div id="map"></div>
-    <div id="matches-list" style="margin-top:1rem;"><div style="color:var(--muted);font-size:0.9rem;">Kies een training om matches te laden.</div></div>
-  </div>
-
-  <!-- PROFIEL -->
-  <div class="view" id="view-profiel">
-    <h2 style="margin-bottom:1.5rem;color:var(--accent);">👤 Mijn profiel</h2>
-    <div id="profiel-content">Laden...</div>
-  </div>
-
-</main>
-</div>
-<div id="toast"></div>
-
-<script>
-// ═══════════════════════════════════════
-//  CONFIG
-// ═══════════════════════════════════════
-let sbClient = null;
-let currentUser = null;
-let currentProfile = null;
-let currentKinderen = [];
-let mapInstance = null;
-let allGroepen = [];
-let userTrainingen = [];
-let matchMarkers = [];
-let radiusCircle = null;
-let editingKindId = null;
-
-function getConfig() {
-  return { url: 'https://tiudkjkeiyxeaiaafhay.supabase.co', key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpdWRramtlaXl4ZWFpYWFmaGF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1MDg5MDcsImV4cCI6MjA5NjA4NDkwN30.mJrBv2pVLQmNrslYZwtTdhRUUVpFrYzNBVBYvBgUUZ4' };
-}
-function saveConfig() {
-  const url = document.getElementById('cfg-url').value.trim();
-  const key = document.getElementById('cfg-key').value.trim();
-  if (!url||!key) return showToast('Vul beide velden in');
-  localStorage.setItem('sb_url', url);
-  localStorage.setItem('sb_key', key);
-  location.reload();
-}
-async function init() {
-  const cfg = getConfig();
-  if (!cfg.url||!cfg.key) { document.getElementById('config-screen').classList.add('visible'); return; }
-  sbClient = window.supabase.createClient(cfg.url, cfg.key);
-  document.getElementById('app').style.display = 'flex';
-  const { data: { session } } = await sbClient.auth.getSession();
-  if (session) { currentUser = session.user; await loadProfile(); }
-  else showAuth();
-}
-
-// ═══════════════════════════════════════
-//  AUTH
-// ═══════════════════════════════════════
-function showAuth(tab='login') {
-  document.getElementById('auth-container').innerHTML = `
+<!-- AUTH SCREEN -->
+<div id="auth-screen" style="display:none;">
+  <div style="max-width:480px;margin:0 auto;">
     <div class="hero">
       <div class="hero-icon">🤸</div>
       <h1>RijdMee</h1>
       <p>Vind een rijdgenoot naar de training vanuit jouw buurt.</p>
     </div>
     <div class="card">
-      <div class="tabs">
-        <button class="tab ${tab==='login'?'active':''}" onclick="switchAuthTab('login',this)">Inloggen</button>
-        <button class="tab ${tab==='register'?'active':''}" onclick="switchAuthTab('register',this)">Registreren</button>
+      <div style="display:flex;gap:4px;margin-bottom:16px;background:var(--surface2);border-radius:10px;padding:4px;">
+        <button id="auth-tab-login" onclick="switchAuthTab('login')" style="flex:1;padding:8px;border:none;border-radius:8px;font-family:var(--font);font-weight:600;font-size:0.88rem;cursor:pointer;background:var(--accent);color:#fff;transition:all 0.2s;">Inloggen</button>
+        <button id="auth-tab-register" onclick="switchAuthTab('register')" style="flex:1;padding:8px;border:none;border-radius:8px;font-family:var(--font);font-weight:600;font-size:0.88rem;cursor:pointer;background:none;color:var(--muted);transition:all 0.2s;">Registreren</button>
       </div>
-      <div class="tab-content ${tab==='login'?'active':''}" id="tab-login">
+      <div id="auth-login">
         <div class="form-group"><label>E-mail</label><input type="email" id="login-email" placeholder="jouw@email.be"></div>
         <div class="form-group"><label>Wachtwoord</label><input type="password" id="login-pw" placeholder="••••••••"></div>
         <button class="btn btn-primary btn-full" onclick="login()">Inloggen</button>
       </div>
-      <div class="tab-content ${tab==='register'?'active':''}" id="tab-register">
+      <div id="auth-register" style="display:none;">
         <div class="alert alert-info">📬 Je hebt een uitnodigingscode nodig van de clubadmin.</div>
         <div class="grid-2">
           <div class="form-group"><label>Voornaam</label><input type="text" id="reg-vnaam" placeholder="Jana"></div>
@@ -287,521 +321,703 @@ function showAuth(tab='login') {
         <div class="form-group"><label>Wachtwoord</label><input type="password" id="reg-pw" placeholder="min. 8 tekens"></div>
         <div class="form-group"><label>Straat</label><input type="text" id="reg-straat" placeholder="Kerkstraat"></div>
         <div class="grid-2">
-          <div class="form-group"><label>Huisnr. <span style="color:var(--muted)">(optioneel)</span></label><input type="text" id="reg-hnr" placeholder="12"></div>
+          <div class="form-group"><label>Huisnr. <span style="color:var(--faint)">(opt.)</span></label><input type="text" id="reg-hnr" placeholder="12"></div>
           <div class="form-group"><label>Gemeente</label><input type="text" id="reg-gem" placeholder="Nazareth"></div>
         </div>
         <div class="form-group"><label>Postcode</label><input type="text" id="reg-pc" placeholder="9810"></div>
-        <div class="form-group"><label>Telefoon <span style="color:var(--muted)">(enkel zichtbaar na match)</span></label><input type="tel" id="reg-tel" placeholder="0470 12 34 56"></div>
-        <div class="form-group"><label>Uitnodigingscode</label><input type="text" id="reg-code" placeholder="GYMCLUB-XXXX" style="letter-spacing:0.1em;text-transform:uppercase"></div>
-        <div class="alert alert-info" style="margin-top:0.5rem;">👶 Je voegt kinderen en hun groepen toe na de registratie via je profiel.</div>
+        <div class="form-group"><label>Telefoon <span style="color:var(--faint)">(enkel na match)</span></label><input type="tel" id="reg-tel" placeholder="0470 12 34 56"></div>
+        <div class="form-group"><label>Uitnodigingscode</label><input type="text" id="reg-code" placeholder="GYMCLUB-XXXX" style="text-transform:uppercase;letter-spacing:0.08em"></div>
+        <div class="alert alert-info">👶 Je voegt kinderen toe via je profiel na registratie.</div>
         <button class="btn btn-primary btn-full" onclick="register()">Account aanmaken</button>
       </div>
-    </div>`;
+    </div>
+  </div>
+</div>
+
+<!-- MAP -->
+<div id="map"></div>
+
+<!-- TOP BAR -->
+<div id="top-bar">
+  <div class="top-bar-inner">
+    <div class="logo-pill">RijdMee <span>Gymclub Nazareth</span></div>
+    <button class="top-pill-btn" id="top-profiel-btn" onclick="openSheet('profiel')" style="display:none;">👤</button>
+  </div>
+</div>
+
+<!-- FAB: zoek rijdgenoot -->
+<button id="fab" onclick="openSheet('matches')" style="display:none;" title="Zoek rijdgenoot">🚗</button>
+
+<!-- SHEETS -->
+
+<!-- SHEET: HOME / VOLGENDE TRAINING -->
+<div class="sheet" id="sheet-home">
+  <div class="sheet-handle"></div>
+  <div class="sheet-header">
+    <div class="sheet-title">Overzicht</div>
+  </div>
+  <div class="sheet-body">
+    <div id="seizoen-banner" style="display:none;">
+      <div class="alert alert-warn" style="flex-direction:column;align-items:flex-start;gap:8px;">
+        <strong>🔄 Nieuw seizoen!</strong>
+        <span style="font-size:0.82rem;">Controleer de groep van je kind(eren) — het uurrooster is gewijzigd.</span>
+        <button class="btn btn-primary btn-sm" onclick="openSheet('profiel');document.getElementById('seizoen-banner').style.display='none'">Groep herbevestigen →</button>
+      </div>
+    </div>
+    <div id="geen-kinderen-alert" style="display:none;">
+      <div class="alert alert-warn">👶 Voeg eerst een kind toe via je profiel.</div>
+    </div>
+
+    <div id="mijn-matches-card" style="display:none;margin-bottom:16px;">
+      <div class="section-header">
+        <div class="section-title">✅ Mijn matches</div>
+      </div>
+      <div id="mijn-matches-list"></div>
+    </div>
+
+    <div id="pending-requests-card" style="display:none;margin-bottom:16px;">
+      <div class="section-header">
+        <div class="section-title">🔔 Openstaande verzoeken</div>
+      </div>
+      <div id="pending-requests-list"></div>
+    </div>
+
+    <div class="section-header">
+      <div class="section-title">📅 Volgende training</div>
+      <button class="btn btn-ghost btn-sm" onclick="openSheet('trainingen')">Alle →</button>
+    </div>
+    <div id="next-training-widget"><div style="color:var(--muted);font-size:0.88rem;">Laden...</div></div>
+  </div>
+</div>
+
+<!-- SHEET: TRAININGEN -->
+<div class="sheet" id="sheet-trainingen">
+  <div class="sheet-handle"></div>
+  <div class="sheet-header">
+    <div class="sheet-title">📅 Mijn trainingen</div>
+    <button class="sheet-close" onclick="closeSheet('trainingen')">✕</button>
+  </div>
+  <div class="sheet-body">
+    <div id="trainingen-list"><div style="color:var(--muted);">Laden...</div></div>
+  </div>
+</div>
+
+<!-- SHEET: MATCHES -->
+<div class="sheet" id="sheet-matches">
+  <div class="sheet-handle"></div>
+  <div class="sheet-header">
+    <div class="sheet-title">🚗 Rijdgenoten zoeken</div>
+    <button class="sheet-close" onclick="closeSheet('matches')">✕</button>
+  </div>
+  <div class="sheet-body">
+    <div class="form-group">
+      <label>Kies training</label>
+      <select id="match-training-select" onchange="loadMatches()"><option value="">— Selecteer —</option></select>
+    </div>
+    <div style="margin-bottom:14px;">
+      <div class="radius-row">
+        <label style="margin:0;">📍 Ophaalstraal</label>
+        <span id="radius-value" style="color:var(--accent);font-weight:700;">5 km</span>
+      </div>
+      <input type="range" id="radius-slider" min="1" max="30" value="5" oninput="updateRadius(this.value)" style="width:100%">
+    </div>
+    <div id="matches-list"><div style="color:var(--muted);font-size:0.88rem;">Kies een training om matches te laden.</div></div>
+  </div>
+</div>
+
+<!-- SHEET: PROFIEL -->
+<div class="sheet" id="sheet-profiel">
+  <div class="sheet-handle"></div>
+  <div class="sheet-header">
+    <div class="sheet-title">👤 Mijn profiel</div>
+    <button class="sheet-close" onclick="closeSheet('profiel')">✕</button>
+  </div>
+  <div class="sheet-body">
+    <div id="profiel-content">Laden...</div>
+  </div>
+</div>
+
+<!-- SHEET: ADMIN -->
+<div class="sheet" id="sheet-admin">
+  <div class="sheet-handle"></div>
+  <div class="sheet-header">
+    <div class="sheet-title">⚙️ Admin</div>
+    <button class="sheet-close" onclick="closeSheet('admin')">✕</button>
+  </div>
+  <div class="sheet-body">
+    <div id="admin-content">Laden...</div>
+  </div>
+</div>
+
+<!-- BOTTOM NAV -->
+<nav id="bottom-nav" style="display:none;">
+  <button class="nav-btn active" id="nav-home" onclick="setNav('home')">
+    <span class="icon">🏠</span>Home
+  </button>
+  <button class="nav-btn" id="nav-trainingen" onclick="setNav('trainingen')">
+    <span class="icon">📅</span>Training
+  </button>
+  <button class="nav-btn" id="nav-matches" onclick="setNav('matches')">
+    <span class="icon">🚗</span>Rijdgenoot
+  </button>
+  <button class="nav-btn" id="nav-profiel" onclick="setNav('profiel')">
+    <span class="icon">👤</span>Profiel
+  </button>
+</nav>
+
+<!-- KIND MODAL -->
+<div class="modal-overlay" id="kind-modal">
+  <div class="modal">
+    <div class="modal-title" id="kind-modal-title">Kind toevoegen</div>
+    <div class="form-group"><label>Label</label><input type="text" id="kind-label" placeholder="Kind 1, Kind 2..."></div>
+    <div class="form-group"><label>Groep</label><select id="kind-groep"><option value="">Laden...</option></select></div>
+    <div style="display:flex;gap:10px;margin-top:4px;">
+      <button class="btn btn-primary" onclick="saveKind()" style="flex:1">Opslaan</button>
+      <button class="btn btn-secondary" onclick="closeKindModal()">Annuleer</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════
+let sbClient = null;
+let currentUser = null, currentProfile = null, currentKinderen = [];
+let mapInstance = null, matchMarkers = [], radiusCircle = null;
+let allGroepen = [], userTrainingen = [];
+let editingKindId = null, seizoenPreviewData = [];
+const DAGEN = ['maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag','zondag'];
+const DAG_NL = {maandag:'Ma',dinsdag:'Di',woensdag:'Wo',donderdag:'Do',vrijdag:'Vr',zaterdag:'Za',zondag:'Zo'};
+
+// ═══════════════════════════════════════
+//  CONFIG & INIT
+// ═══════════════════════════════════════
+function getConfig() {
+  return {
+    url: 'https://tiudkjkeiyxeaiaafhay.supabase.co',
+    key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpdWRramtlaXl4ZWFpYWFmaGF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1MDg5MDcsImV4cCI6MjA5NjA4NDkwN30.mJrBv2pVLQmNrslYZwtTdhRUUVpFrYzNBVBYvBgUUZ4'
+  };
+}
+function saveConfig() {
+  const url=document.getElementById('cfg-url').value.trim();
+  const key=document.getElementById('cfg-key').value.trim();
+  if(!url||!key) return showToast('Vul beide velden in');
+  localStorage.setItem('sb_url',url); localStorage.setItem('sb_key',key); location.reload();
+}
+async function init() {
+  const cfg = getConfig();
+  if(!cfg.url||!cfg.key){ document.getElementById('config-screen').classList.add('visible'); return; }
+  sbClient = window.supabase.createClient(cfg.url, cfg.key);
+  initMap();
+  const { data:{session} } = await sbClient.auth.getSession();
+  if(session){ currentUser=session.user; await loadProfile(); }
+  else showAuth();
 }
 
-function switchAuthTab(tab, el) {
-  document.querySelectorAll('#auth-container .tab').forEach(t=>t.classList.remove('active'));
-  document.querySelectorAll('#auth-container .tab-content').forEach(t=>t.classList.remove('active'));
-  document.getElementById('tab-'+tab).classList.add('active');
-  if(el) el.classList.add('active');
+// ═══════════════════════════════════════
+//  MAP
+// ═══════════════════════════════════════
+function initMap() {
+  if(mapInstance) return;
+  mapInstance = L.map('map',{zoomControl:false,attributionControl:false}).setView([50.967,3.735],12);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapInstance);
+  L.control.attribution({prefix:false,position:'bottomleft'}).addTo(mapInstance);
+  // Swipe-to-open op de kaart
+  let startY=0;
+  document.getElementById('map').addEventListener('touchstart',e=>startY=e.touches[0].clientY,{passive:true});
+  document.getElementById('map').addEventListener('touchend',e=>{
+    if(e.changedTouches[0].clientY-startY < -60) openSheet('home');
+  },{passive:true});
+}
+function centerMap(lat,lng,zoom=14){
+  if(mapInstance) mapInstance.setView([lat,lng],zoom);
+}
+function addOwnMarker(){
+  if(!currentProfile?.lat) return;
+  L.marker([currentProfile.lat,currentProfile.lng],{
+    icon:L.divIcon({html:'<div style="background:var(--accent,#e94560);width:14px;height:14px;border-radius:50%;border:2.5px solid white;box-shadow:0 2px 8px rgba(233,69,96,0.6)"></div>',iconSize:[14,14],iconAnchor:[7,7],className:''})
+  }).addTo(mapInstance).bindPopup('📍 Jij');
+  centerMap(currentProfile.lat,currentProfile.lng);
+}
+function updateRadius(val){
+  document.getElementById('radius-value').textContent=val+' km';
+  if(radiusCircle&&currentProfile?.lat) radiusCircle.setRadius(val*1000);
 }
 
-async function login() {
-  const email = document.getElementById('login-email').value.trim();
-  const pw = document.getElementById('login-pw').value;
-  if (!email||!pw) return showToast('Vul alle velden in');
-  const { data, error } = await sbClient.auth.signInWithPassword({ email, password: pw });
-  if (error) return showToast('❌ '+error.message);
-  currentUser = data.user;
-  await loadProfile();
+// ═══════════════════════════════════════
+//  AUTH
+// ═══════════════════════════════════════
+function showAuth(){
+  document.getElementById('auth-screen').style.display='block';
+  document.getElementById('bottom-nav').style.display='none';
+  document.getElementById('fab').style.display='none';
+  document.getElementById('top-profiel-btn').style.display='none';
 }
+function hideAuth(){
+  document.getElementById('auth-screen').style.display='none';
+  document.getElementById('bottom-nav').style.display='flex';
+  document.getElementById('fab').style.display='flex';
+  document.getElementById('top-profiel-btn').style.display='flex';
+}
+function switchAuthTab(tab){
+  const isLogin = tab==='login';
+  document.getElementById('auth-login').style.display=isLogin?'block':'none';
+  document.getElementById('auth-register').style.display=isLogin?'none':'block';
+  document.getElementById('auth-tab-login').style.background=isLogin?'var(--accent)':'none';
+  document.getElementById('auth-tab-login').style.color=isLogin?'#fff':'var(--muted)';
+  document.getElementById('auth-tab-register').style.background=isLogin?'none':'var(--accent)';
+  document.getElementById('auth-tab-register').style.color=isLogin?'var(--muted)':'#fff';
+}
+async function login(){
+  const email=document.getElementById('login-email').value.trim();
+  const pw=document.getElementById('login-pw').value;
+  if(!email||!pw) return showToast('Vul alle velden in');
+  const{data,error}=await sbClient.auth.signInWithPassword({email,password:pw});
+  if(error) return showToast('❌ '+error.message);
+  currentUser=data.user; await loadProfile();
+}
+async function register(){
+  const vnaam=document.getElementById('reg-vnaam').value.trim();
+  const anaam=document.getElementById('reg-anaam').value.trim();
+  const email=document.getElementById('reg-email').value.trim();
+  const pw=document.getElementById('reg-pw').value;
+  const straat=document.getElementById('reg-straat').value.trim();
+  const hnr=document.getElementById('reg-hnr').value.trim();
+  const gem=document.getElementById('reg-gem').value.trim();
+  const pc=document.getElementById('reg-pc').value.trim();
+  const tel=document.getElementById('reg-tel').value.trim();
+  const code=document.getElementById('reg-code').value.trim().toUpperCase();
+  if(!vnaam||!anaam||!email||!pw||!straat||!gem||!code) return showToast('Vul alle verplichte velden in');
 
-async function register() {
-  const vnaam = document.getElementById('reg-vnaam').value.trim();
-  const anaam = document.getElementById('reg-anaam').value.trim();
-  const email = document.getElementById('reg-email').value.trim();
-  const pw = document.getElementById('reg-pw').value;
-  const straat = document.getElementById('reg-straat').value.trim();
-  const hnr = document.getElementById('reg-hnr').value.trim();
-  const gem = document.getElementById('reg-gem').value.trim();
-  const pc = document.getElementById('reg-pc').value.trim();
-  const tel = document.getElementById('reg-tel').value.trim();
-  const code = document.getElementById('reg-code').value.trim().toUpperCase();
+  const{data:codeData,error:codeErr}=await sbClient.from('invite_codes').select('*').eq('code',code).single();
+  if(codeErr||!codeData) return showToast('❌ Ongeldige uitnodigingscode');
+  if(codeData.used_count>=codeData.max_uses) return showToast('❌ Code is al maximaal gebruikt');
+  if(codeData.expires_at&&new Date(codeData.expires_at)<new Date()) return showToast('❌ Code is verlopen');
 
-  if (!vnaam||!anaam||!email||!pw||!straat||!gem||!code)
-    return showToast('Vul alle verplichte velden in');
+  let lat=null,lng=null;
+  try{
+    const adres=`${straat}${hnr?' '+hnr:''}, ${pc} ${gem}, Belgium`;
+    const geo=await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(adres)}&limit=1`);
+    const gd=await geo.json();
+    if(gd.length>0){lat=parseFloat(gd[0].lat);lng=parseFloat(gd[0].lon);}
+  }catch(e){}
 
-  const { data: codeData, error: codeErr } = await sbClient.from('invite_codes').select('*').eq('code',code).single();
-  if (codeErr||!codeData) return showToast('❌ Ongeldige uitnodigingscode');
-  if (codeData.used_count >= codeData.max_uses) return showToast('❌ Code is al maximaal gebruikt');
-  if (codeData.expires_at && new Date(codeData.expires_at) < new Date()) return showToast('❌ Code is verlopen');
+  const{data:authData,error:authErr}=await sbClient.auth.signUp({email,password:pw});
+  if(authErr) return showToast('❌ '+authErr.message);
+  const{data:loginData,error:loginErr}=await sbClient.auth.signInWithPassword({email,password:pw});
+  if(loginErr) return showToast('❌ '+loginErr.message);
+  currentUser=loginData.user;
 
-  // Geocodeer
-  const adres = `${straat}${hnr?' '+hnr:''}, ${pc} ${gem}, Belgium`;
-  let lat=null, lng=null;
-  try {
-    const geo = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(adres)}&limit=1`);
-    const gd = await geo.json();
-    if (gd.length>0) { lat=parseFloat(gd[0].lat); lng=parseFloat(gd[0].lon); }
-  } catch(e) {}
-
-  // Stap 1: account aanmaken
-  const { data: authData, error: authErr } = await sbClient.auth.signUp({ email, password: pw });
-  if (authErr) return showToast('❌ '+authErr.message);
-
-  // Stap 2: meteen inloggen zodat sessie actief is voor de profile insert
-  const { data: loginData, error: loginErr } = await sbClient.auth.signInWithPassword({ email, password: pw });
-  if (loginErr) return showToast('❌ Inloggen na registratie mislukt: '+loginErr.message);
-  currentUser = loginData.user;
-
-  // Stap 3: profiel aanmaken (nu met actieve sessie)
-  const { error: profErr } = await sbClient.from('profiles').insert({
-    id: currentUser.id, voornaam: vnaam, achternaam: anaam,
-    straat, huisnummer: hnr||null, gemeente: gem, postcode: pc,
-    lat, lng, telefoon: tel||null, carpool_actief: true
+  const{error:profErr}=await sbClient.from('profiles').insert({
+    id:currentUser.id,voornaam:vnaam,achternaam:anaam,
+    straat,huisnummer:hnr||null,gemeente:gem,postcode:pc,
+    lat,lng,telefoon:tel||null,carpool_actief:true
   });
-  if (profErr) return showToast('❌ Profiel aanmaken mislukt: '+profErr.message);
-
-  await sbClient.from('invite_codes').update({ used_count: codeData.used_count+1 }).eq('code',code);
-  showToast('✅ Account aangemaakt! Voeg nu je kind(eren) toe.');
+  if(profErr) return showToast('❌ '+profErr.message);
+  await sbClient.from('invite_codes').update({used_count:codeData.used_count+1}).eq('code',code);
+  showToast('✅ Account aangemaakt!');
   await loadProfile();
 }
-
-async function logout() {
+async function logout(){
   await sbClient.auth.signOut();
-  currentUser=null; currentProfile=null; currentKinderen=[];
-  document.getElementById('home-content').style.display='none';
-  showAuth(); showView('home');
+  currentUser=null;currentProfile=null;currentKinderen=[];
+  closeAllSheets(); showAuth();
 }
 
 // ═══════════════════════════════════════
 //  PROFIEL LADEN
 // ═══════════════════════════════════════
-async function loadProfile() {
-  const { data, error } = await sbClient.from('profiles').select('*').eq('id', currentUser.id).single();
-  if (error||!data) { showAuth('register'); return; }
-  currentProfile = data;
+async function loadProfile(){
+  const{data,error}=await sbClient.from('profiles').select('*').eq('id',currentUser.id).single();
+  if(error||!data){showAuth();return;}
+  currentProfile=data;
+  const{data:kinderen}=await sbClient.from('kinderen').select('*, groepen(naam)').eq('ouder_id',currentUser.id).order('label');
+  currentKinderen=kinderen||[];
+  hideAuth();
+  addOwnMarker();
 
-  // Laad kinderen
-  const { data: kinderen } = await sbClient.from('kinderen').select('*, groepen(naam)').eq('ouder_id', currentUser.id).order('label');
-  currentKinderen = kinderen || [];
-
-  document.getElementById('auth-container').innerHTML = '';
-  document.getElementById('home-content').style.display = 'block';
-  document.getElementById('welcome-name').textContent = data.voornaam+' '+data.achternaam;
-
-  // Admin nav
-  if (data.is_admin) {
-    const nav = document.getElementById('main-nav');
-    if (!document.getElementById('admin-nav-btn')) {
-      const btn = document.createElement('button');
-      btn.id='admin-nav-btn'; btn.textContent='⚙️';
-      btn.onclick=()=>showView('admin'); nav.appendChild(btn);
-      const main = document.querySelector('main');
-      const av = document.createElement('div');
-      av.className='view'; av.id='view-admin'; av.innerHTML=buildAdminView();
-      main.appendChild(av);
+  if(currentProfile.is_admin){
+    const nav=document.getElementById('bottom-nav');
+    if(!document.getElementById('nav-admin')){
+      const btn=document.createElement('button');
+      btn.className='nav-btn';btn.id='nav-admin';
+      btn.innerHTML='<span class="icon">⚙️</span>Admin';
+      btn.onclick=()=>setNav('admin');
+      nav.appendChild(btn);
     }
   }
 
-  if (currentKinderen.length===0) {
+  if(currentKinderen.length===0){
     document.getElementById('geen-kinderen-alert').style.display='block';
-    document.getElementById('next-training-widget').innerHTML='<div style="color:var(--muted);font-size:0.9rem;">Voeg eerst een kind toe.</div>';
-    document.getElementById('quick-matches').innerHTML='<div style="color:var(--muted);font-size:0.9rem;">Voeg eerst een kind toe.</div>';
-  } else {
+  }else{
     document.getElementById('geen-kinderen-alert').style.display='none';
+    await checkSeizoenBanner();
     await loadTrainingen();
     await loadNextTraining();
     await loadPendingRequests();
     await loadMijnMatches();
   }
-  initMap();
+  openSheet('home');
+  setNav('home');
+}
+
+// ═══════════════════════════════════════
+//  NAVIGATIE & SHEETS
+// ═══════════════════════════════════════
+let activeSheet = null;
+function openSheet(name){
+  // Sluit andere sheets
+  document.querySelectorAll('.sheet').forEach(s=>s.classList.remove('open'));
+  const sheet=document.getElementById('sheet-'+name);
+  if(sheet) sheet.classList.add('open');
+  activeSheet=name;
+  if(name==='matches') setTimeout(()=>mapInstance?.invalidateSize(),350);
+  if(name==='profiel') renderProfiel();
+  if(name==='admin') renderAdmin();
+}
+function closeSheet(name){
+  document.getElementById('sheet-'+name)?.classList.remove('open');
+  if(activeSheet===name) activeSheet=null;
+  // Ga terug naar home sheet
+  openSheet('home');
+  setNav('home');
+}
+function closeAllSheets(){
+  document.querySelectorAll('.sheet').forEach(s=>s.classList.remove('open'));
+  activeSheet=null;
+}
+function setNav(name){
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('nav-'+name)?.classList.add('active');
+  openSheet(name);
 }
 
 // ═══════════════════════════════════════
 //  KINDEREN
 // ═══════════════════════════════════════
-async function openKindModal(kindId=null) {
-  editingKindId = kindId;
-  // Laad groepen
-  const { data: groepen } = await sbClient.from('groepen').select('*').order('naam');
-  allGroepen = groepen || [];
-  const sel = document.getElementById('kind-groep');
-  if (allGroepen.length===0) {
-    showToast('⚠️ Er zijn nog geen groepen. De admin moet eerst groepen aanmaken.');
-    return;
-  }
-  sel.innerHTML = allGroepen.map(g=>`<option value="${g.id}">${g.naam}</option>`).join('');
-
-  if (kindId) {
-    const kind = currentKinderen.find(k=>k.id===kindId);
-    document.getElementById('kind-modal-title').textContent = 'Kind bewerken';
-    document.getElementById('kind-label').value = kind?.label||'';
-    sel.value = kind?.groep_id||'';
-  } else {
-    document.getElementById('kind-modal-title').textContent = 'Kind toevoegen';
-    const volgend = currentKinderen.length+1;
-    document.getElementById('kind-label').value = `Kind ${volgend}`;
-    sel.value = allGroepen[0]?.id||'';
+async function openKindModal(kindId=null){
+  editingKindId=kindId;
+  const{data:groepen}=await sbClient.from('groepen').select('*').order('naam');
+  allGroepen=groepen||[];
+  const sel=document.getElementById('kind-groep');
+  if(!allGroepen.length){showToast('⚠️ Admin moet eerst groepen aanmaken');return;}
+  sel.innerHTML=allGroepen.map(g=>`<option value="${g.id}">${g.naam}</option>`).join('');
+  if(kindId){
+    const k=currentKinderen.find(k=>k.id===kindId);
+    document.getElementById('kind-modal-title').textContent='Kind bewerken';
+    document.getElementById('kind-label').value=k?.label||'';
+    sel.value=k?.groep_id||'';
+  }else{
+    document.getElementById('kind-modal-title').textContent='Kind toevoegen';
+    document.getElementById('kind-label').value=`Kind ${currentKinderen.length+1}`;
+    sel.value=allGroepen[0]?.id||'';
   }
   document.getElementById('kind-modal').classList.add('open');
 }
-
-function closeKindModal() {
-  document.getElementById('kind-modal').classList.remove('open');
-  editingKindId = null;
-}
-
-async function saveKind() {
-  const label = document.getElementById('kind-label').value.trim();
-  const groep_id = document.getElementById('kind-groep').value;
-  if (!label||!groep_id) return showToast('Vul alle velden in');
-
-  if (editingKindId) {
-    const { error } = await sbClient.from('kinderen').update({ label, groep_id }).eq('id', editingKindId);
-    if (error) return showToast('❌ '+error.message);
+function closeKindModal(){document.getElementById('kind-modal').classList.remove('open');editingKindId=null;}
+async function saveKind(){
+  const label=document.getElementById('kind-label').value.trim();
+  const groep_id=document.getElementById('kind-groep').value;
+  if(!label||!groep_id) return showToast('Vul alle velden in');
+  if(editingKindId){
+    const{error}=await sbClient.from('kinderen').update({label,groep_id}).eq('id',editingKindId);
+    if(error) return showToast('❌ '+error.message);
     showToast('✅ Kind bijgewerkt');
-  } else {
-    const { error } = await sbClient.from('kinderen').insert({ ouder_id: currentUser.id, label, groep_id });
-    if (error) return showToast('❌ '+error.message);
+  }else{
+    const{error}=await sbClient.from('kinderen').insert({ouder_id:currentUser.id,label,groep_id});
+    if(error) return showToast('❌ '+error.message);
     showToast('✅ Kind toegevoegd');
   }
   closeKindModal();
   await loadProfile();
   renderProfiel();
 }
-
-async function deleteKind(kindId) {
-  if (!confirm('Kind verwijderen?')) return;
-  await sbClient.from('kinderen').delete().eq('id', kindId);
+async function deleteKind(id){
+  if(!confirm('Kind verwijderen?')) return;
+  await sbClient.from('kinderen').delete().eq('id',id);
   showToast('Kind verwijderd');
-  await loadProfile();
-  renderProfiel();
+  await loadProfile(); renderProfiel();
 }
 
 // ═══════════════════════════════════════
 //  TRAININGEN
 // ═══════════════════════════════════════
-const DAGEN = ['maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag','zondag'];
-const DAG_NL = {maandag:'Ma',dinsdag:'Di',woensdag:'Wo',donderdag:'Do',vrijdag:'Vr',zaterdag:'Za',zondag:'Zo'};
+async function loadTrainingen(){
+  if(!currentKinderen.length) return;
+  const groepIds=[...new Set(currentKinderen.map(k=>k.groep_id))];
+  const{data}=await sbClient.from('trainingen')
+    .select('*, zalen(naam,adres,lat,lng), groepen(naam)')
+    .in('groep_id',groepIds).eq('active',true);
+  userTrainingen=data||[];
 
-async function loadTrainingen() {
-  if (!currentKinderen.length) return;
-  const groepIds = [...new Set(currentKinderen.map(k=>k.groep_id))];
-  const { data } = await sbClient.from('trainingen')
-    .select('*, zalen(naam, adres, lat, lng), groepen(naam)')
-    .in('groep_id', groepIds).eq('active', true);
-  userTrainingen = data||[];
-
-  // Match select
-  const sel = document.getElementById('match-training-select');
-  if (sel) {
-    sel.innerHTML = '<option value="">— Selecteer training —</option>' +
-      userTrainingen.map(t => {
-        const kindLabel = currentKinderen.find(k=>k.groep_id===t.groep_id)?.label||'';
-        return `<option value="${t.id}">${DAG_NL[t.dag]||t.dag} ${t.start_tijd} · ${t.zalen?.naam||'?'} (${kindLabel||t.groepen?.naam||'?'})</option>`;
+  const sel=document.getElementById('match-training-select');
+  if(sel){
+    sel.innerHTML='<option value="">— Selecteer training —</option>'+
+      userTrainingen.map(t=>{
+        const k=currentKinderen.find(k=>k.groep_id===t.groep_id);
+        return `<option value="${t.id}">${DAG_NL[t.dag]||t.dag} ${t.start_tijd} · ${t.zalen?.naam||'?'} (${k?.label||t.groepen?.naam||'?'})</option>`;
       }).join('');
   }
 
-  // Trainingen view
-  const list = document.getElementById('trainingen-list');
-  if (!list) return;
-  if (!userTrainingen.length) {
-    list.innerHTML = '<div class="alert alert-info">Geen trainingen gevonden. Controleer of de admin het schema al heeft ingevoerd.</div>';
-    return;
-  }
-  list.innerHTML = DAGEN.map(dag => {
-    const slots = userTrainingen.filter(t=>t.dag===dag);
-    if (!slots.length) return '';
-    return `<div style="margin-bottom:1.5rem;">
-      <div style="color:var(--muted);font-size:0.8rem;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.5rem;">${dag}</div>
-      ${slots.map(t => {
-        const kindLabel = currentKinderen.find(k=>k.groep_id===t.groep_id)?.label||t.groepen?.naam||'?';
-        return `<div class="slot">
+  const list=document.getElementById('trainingen-list');
+  if(!list) return;
+  if(!userTrainingen.length){list.innerHTML='<div class="alert alert-info">Geen trainingen gevonden. Vraag de admin om het schema in te voeren.</div>';return;}
+  list.innerHTML=DAGEN.map(dag=>{
+    const slots=userTrainingen.filter(t=>t.dag===dag);
+    if(!slots.length) return '';
+    return `<div class="dag-header">${dag}</div>`+
+      slots.map(t=>{
+        const k=currentKinderen.find(k=>k.groep_id===t.groep_id);
+        return `<div class="training-row">
           <div>
-            <div class="slot-time">${t.start_tijd} – ${t.eind_tijd}</div>
-            <div class="slot-detail">📍 ${t.zalen?.naam||'?'} · <span class="badge badge-accent" style="font-size:0.75rem;">${kindLabel}</span></div>
+            <div class="training-time">${t.start_tijd} – ${t.eind_tijd}</div>
+            <div class="training-detail">📍 ${t.zalen?.naam||'?'} · <span class="badge badge-red" style="font-size:0.68rem;">${k?.label||t.groepen?.naam||'?'}</span></div>
           </div>
-          <button class="btn btn-secondary btn-sm" onclick="goToMatches('${t.id}')">🚗 Vind rijdgenoot</button>
+          <button class="btn btn-secondary btn-sm" onclick="setNav('matches');document.getElementById('match-training-select').value='${t.id}';loadMatches()">🚗 Vind</button>
         </div>`;
-      }).join('')}
-    </div>`;
+      }).join('');
   }).join('');
 }
-
-async function loadNextTraining() {
-  const widget = document.getElementById('next-training-widget');
-  if (!widget||!userTrainingen.length) return;
-  const now = new Date();
-  const dagOrder = ['zondag','maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag'];
-  let found = null;
-  for (let i=0;i<7;i++) {
-    const checkDay = dagOrder[(now.getDay()+i)%7];
-    const slots = userTrainingen.filter(t=>t.dag===checkDay);
-    for (const slot of slots) {
-      if (i===0) {
-        const [h,m] = slot.start_tijd.split(':').map(Number);
-        const st = new Date(); st.setHours(h,m,0);
-        if (st<=now) continue;
-      }
-      found={slot,daysAway:i}; break;
+async function loadNextTraining(){
+  const w=document.getElementById('next-training-widget');
+  if(!w||!userTrainingen.length){if(w)w.innerHTML='<div style="color:var(--muted);font-size:0.88rem;">Voeg een kind toe om trainingen te zien.</div>';return;}
+  const now=new Date();
+  const dagOrder=['zondag','maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag'];
+  let found=null;
+  for(let i=0;i<7;i++){
+    const day=dagOrder[(now.getDay()+i)%7];
+    for(const slot of userTrainingen.filter(t=>t.dag===day)){
+      if(i===0){const[h,m]=slot.start_tijd.split(':').map(Number);const st=new Date();st.setHours(h,m,0);if(st<=now)continue;}
+      found={slot,daysAway:i};break;
     }
-    if (found) break;
+    if(found)break;
   }
-  if (!found) { widget.innerHTML='<div style="color:var(--muted);">Geen komende training gevonden.</div>'; return; }
-  const {slot,daysAway} = found;
-  const label = daysAway===0?'Vanavond':daysAway===1?'Morgen':`Over ${daysAway} dagen`;
-  const kindLabel = currentKinderen.find(k=>k.groep_id===slot.groep_id)?.label||slot.groepen?.naam||'?';
-  widget.innerHTML = `
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.75rem;">
+  if(!found){w.innerHTML='<div style="color:var(--muted);font-size:0.88rem;">Geen komende training gevonden.</div>';return;}
+  const{slot,daysAway}=found;
+  const label=daysAway===0?'Vanavond':daysAway===1?'Morgen':`Over ${daysAway} dagen`;
+  const k=currentKinderen.find(k=>k.groep_id===slot.groep_id);
+  w.innerHTML=`
+    <div class="training-row" style="border:none;padding:0;">
       <div>
-        <div style="font-size:1.5rem;font-family:var(--font-display);color:var(--accent);">${slot.start_tijd}</div>
-        <div style="color:var(--muted);font-size:0.85rem;">${label} · ${slot.zalen?.naam||'?'} · <span style="color:var(--accent)">${kindLabel}</span></div>
+        <div style="font-size:1.6rem;font-weight:700;color:var(--accent2);">${slot.start_tijd}</div>
+        <div style="color:var(--muted);font-size:0.82rem;margin-top:3px;">${label} · ${slot.zalen?.naam||'?'}</div>
+        <div style="margin-top:5px;"><span class="badge badge-red">${k?.label||slot.groepen?.naam||'?'}</span></div>
       </div>
-      <button class="btn btn-secondary btn-sm" onclick="goToMatches('${slot.id}')">🚗 Vind rijdgenoot</button>
+      <button class="btn btn-primary btn-sm" onclick="setNav('matches');document.getElementById('match-training-select').value='${slot.id}';loadMatches()">🚗 Vind rijdgenoot</button>
     </div>`;
 }
 
-function goToMatches(trainingId) {
-  showView('matches');
-  const sel = document.getElementById('match-training-select');
-  if (sel) { sel.value=trainingId; loadMatches(); }
-}
-
 // ═══════════════════════════════════════
-//  KAART & MATCHES
+//  MATCHES
 // ═══════════════════════════════════════
-function initMap() {
-  if (mapInstance) return;
-  const center = currentProfile?.lat ? [currentProfile.lat, currentProfile.lng] : [50.967, 3.735];
-  mapInstance = L.map('map').setView(center, 12);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(mapInstance);
-  if (currentProfile?.lat) {
-    L.marker([currentProfile.lat, currentProfile.lng], {
-      icon: L.divIcon({html:'<div style="background:#e8b86d;width:14px;height:14px;border-radius:50%;border:2px solid white;"></div>',iconSize:[14,14],iconAnchor:[7,7],className:''})
-    }).addTo(mapInstance).bindPopup('📍 Jij');
-  }
-}
+async function loadMatches(){
+  const trainingId=document.getElementById('match-training-select').value;
+  const list=document.getElementById('matches-list');
+  if(!trainingId){list.innerHTML='<div style="color:var(--muted);font-size:0.88rem;">Kies een training om matches te laden.</div>';return;}
+  const training=userTrainingen.find(t=>t.id===trainingId);
+  if(!training) return;
+  list.innerHTML='<div style="color:var(--muted);">Laden... <span class="spinner"></span></div>';
 
-function updateRadius(val) {
-  document.getElementById('radius-value').textContent = val+' km';
-  if (radiusCircle&&currentProfile?.lat) radiusCircle.setRadius(val*1000);
-}
+  const{data:parallel}=await sbClient.from('trainingen').select('groep_id')
+    .eq('dag',training.dag).eq('start_tijd',training.start_tijd).eq('zaal_id',training.zaal_id);
+  const groepIds=[...new Set((parallel||[]).map(t=>t.groep_id))];
+  const{data:andereKinderen}=await sbClient.from('kinderen')
+    .select('ouder_id,groep_id').in('groep_id',groepIds).neq('ouder_id',currentUser.id);
+  const ouderIds=[...new Set((andereKinderen||[]).map(k=>k.ouder_id))];
 
-async function loadMatches() {
-  const trainingId = document.getElementById('match-training-select').value;
-  const list = document.getElementById('matches-list');
-  if (!trainingId) { list.innerHTML='<div style="color:var(--muted);font-size:0.9rem;">Kies een training om matches te laden.</div>'; return; }
+  matchMarkers.forEach(m=>m.remove());matchMarkers=[];
+  if(radiusCircle){radiusCircle.remove();radiusCircle=null;}
 
-  const training = userTrainingen.find(t=>t.id===trainingId);
-  if (!training) return;
-  list.innerHTML='<div style="color:var(--muted);">Matches laden... <span class="spinner"></span></div>';
+  if(!ouderIds.length){list.innerHTML='<div class="alert alert-info">Geen andere ouders gevonden voor dit trainingsmoment.</div>';return;}
 
-  // Alle groepen die op hetzelfde moment in dezelfde zaal trainen
-  const { data: parallel } = await sbClient.from('trainingen').select('groep_id')
-    .eq('dag', training.dag).eq('start_tijd', training.start_tijd).eq('zaal_id', training.zaal_id);
+  const{data:ouders}=await sbClient.from('profiles')
+    .select('id,voornaam,gemeente,lat,lng,carpool_actief').in('id',ouderIds).eq('carpool_actief',true);
+  if(!ouders?.length){list.innerHTML='<div class="alert alert-info">Geen beschikbare rijdgenoten.</div>';return;}
 
-  const groepIds = [...new Set((parallel||[]).map(t=>t.groep_id))];
-
-  // Alle ouders met kinderen in die groepen (niet zichzelf)
-  const { data: andereKinderen } = await sbClient.from('kinderen')
-    .select('ouder_id, groep_id').in('groep_id', groepIds).neq('ouder_id', currentUser.id);
-
-  const ouderIds = [...new Set((andereKinderen||[]).map(k=>k.ouder_id))];
-
-  matchMarkers.forEach(m=>m.remove()); matchMarkers=[];
-  if (radiusCircle) { radiusCircle.remove(); radiusCircle=null; }
-
-  if (!ouderIds.length) { list.innerHTML='<div class="alert alert-info">Geen andere ouders gevonden voor dit trainingsmoment.</div>'; return; }
-
-  const { data: ouders } = await sbClient.from('profiles')
-    .select('id, voornaam, gemeente, lat, lng, carpool_actief')
-    .in('id', ouderIds).eq('carpool_actief', true);
-
-  if (!ouders||!ouders.length) { list.innerHTML='<div class="alert alert-info">Geen beschikbare rijdgenoten voor dit moment.</div>'; return; }
-
-  const radius = parseInt(document.getElementById('radius-slider').value)*1000;
-  if (currentProfile?.lat&&mapInstance) {
-    radiusCircle = L.circle([currentProfile.lat, currentProfile.lng],{radius,color:'#e8b86d',fillColor:'#e8b86d',fillOpacity:0.06,weight:1.5}).addTo(mapInstance);
+  const radius=parseInt(document.getElementById('radius-slider').value)*1000;
+  if(currentProfile?.lat&&mapInstance){
+    radiusCircle=L.circle([currentProfile.lat,currentProfile.lng],{radius,color:'#e94560',fillColor:'#e94560',fillOpacity:0.07,weight:1.5}).addTo(mapInstance);
+    // Zoom kaart naar relevante area
+    if(training.zalen?.lat) centerMap(
+      (currentProfile.lat+training.zalen.lat)/2,
+      (currentProfile.lng+training.zalen.lng)/2, 11
+    );
   }
 
-  const oudersMet = ouders.map(o => {
-    const dist = currentProfile?.lat&&o.lat ? haversine(currentProfile.lat,currentProfile.lng,o.lat,o.lng) : null;
-    // Welke kinderen heeft deze ouder in de parallelle groepen?
-    const hunKinderen = andereKinderen.filter(k=>k.ouder_id===o.id);
-    return {...o, dist, hunKinderen};
+  const{data:mijnVerzoeken}=await sbClient.from('carpool_requests')
+    .select('naar_id,status').eq('van_id',currentProfile.id).eq('training_id',trainingId);
+  const verzMap={};(mijnVerzoeken||[]).forEach(v=>{verzMap[v.naar_id]=v.status;});
+
+  const acceptedIds=(mijnVerzoeken||[]).filter(v=>v.status==='accepted').map(v=>v.naar_id);
+  const acceptedContacts={};
+  if(acceptedIds.length){
+    const{data:contacts}=await sbClient.from('profiles').select('id,telefoon').in('id',acceptedIds);
+    (contacts||[]).forEach(c=>{acceptedContacts[c.id]=c.telefoon||'';});
+  }
+
+  const oudersMet=ouders.map(o=>{
+    const dist=currentProfile?.lat&&o.lat?haversine(currentProfile.lat,currentProfile.lng,o.lat,o.lng):null;
+    return{...o,dist};
   }).sort((a,b)=>(a.dist??999)-(b.dist??999));
 
-  oudersMet.forEach(o => {
-    if (!o.lat||!mapInstance) return;
-    const inRadius = o.dist!==null&&o.dist<=radius/1000;
-    const m = L.marker([o.lat,o.lng],{
-      icon:L.divIcon({html:`<div style="background:${inRadius?'#6dce9a':'#6d9de8'};width:12px;height:12px;border-radius:50%;border:2px solid white;"></div>`,iconSize:[12,12],iconAnchor:[6,6],className:''})
+  oudersMet.forEach(o=>{
+    if(!o.lat||!mapInstance) return;
+    const inR=o.dist!==null&&o.dist<=radius/1000;
+    const m=L.marker([o.lat,o.lng],{
+      icon:L.divIcon({html:`<div style="background:${inR?'#2ecc71':'#4cc9f0'};width:12px;height:12px;border-radius:50%;border:2px solid white;box-shadow:0 1px 6px rgba(0,0,0,0.4)"></div>`,iconSize:[12,12],iconAnchor:[6,6],className:''})
     }).addTo(mapInstance).bindPopup(`${o.voornaam} · ${o.gemeente}`);
     matchMarkers.push(m);
   });
 
-  const { data: mijnVerzoeken } = await sbClient.from('carpool_requests')
-    .select('naar_id, status').eq('van_id', currentProfile.id).eq('training_id', trainingId);
-  const verzMap = {};
-  (mijnVerzoeken||[]).forEach(v=>{verzMap[v.naar_id]=v.status;});
-
-  // Haal contactinfo op van geaccepteerde matches
-  const acceptedIds = (mijnVerzoeken||[]).filter(v=>v.status==='accepted').map(v=>v.naar_id);
-  const acceptedContacts = {};
-  if (acceptedIds.length) {
-    const { data: contacts } = await sbClient.from('profiles').select('id, telefoon').in('id', acceptedIds);
-    (contacts||[]).forEach(c=>{ acceptedContacts[c.id]=c.telefoon||''; });
-  }
-
-  list.innerHTML = `
-    <div style="display:flex;gap:1rem;margin-bottom:0.75rem;flex-wrap:wrap;align-items:center;">
-      <span style="font-size:0.82rem;color:var(--muted);"><span style="color:#6dce9a;">●</span> Binnen straal &nbsp;<span style="color:#6d9de8;">●</span> Verder</span>
-      <span style="font-size:0.82rem;color:var(--muted);">${oudersMet.length} ouders gevonden</span>
+  list.innerHTML=`
+    <div style="display:flex;gap:10px;margin-bottom:12px;align-items:center;flex-wrap:wrap;">
+      <span style="font-size:0.76rem;color:var(--muted);"><span style="color:#2ecc71">●</span> In straal &nbsp;<span style="color:#4cc9f0">●</span> Verder</span>
+      <span style="font-size:0.76rem;color:var(--muted);">${oudersMet.length} ouder${oudersMet.length!==1?'s':''} gevonden</span>
     </div>
-    ${oudersMet.map(o => {
-      const status = verzMap[o.id];
-      const inRadius = o.dist!==null&&o.dist<=radius/1000;
-      const distStr = o.dist!==null?`${o.dist.toFixed(1)} km`:'onbekend';
-      let btn = '';
-      if (status==='accepted') {
-        const tel = acceptedContacts[o.id]||'';
-        btn=`<div style="display:flex;flex-direction:column;align-items:flex-end;gap:0.3rem;">
-          <span class="badge badge-success">✓ Gematcht</span>
-          ${tel?`<span style="font-size:0.82rem;color:var(--success);">📞 ${tel}</span>`:''}
-        </div>`;
-      }
-      else if (status==='pending') btn=`<span class="badge badge-blue">⏳ Wachten</span>`;
-      else if (status==='declined') btn=`<span class="badge badge-danger">✗ Geweigerd</span>`;
-      else btn=`<button class="btn btn-secondary btn-sm" onclick="sendRequest('${o.id}','${trainingId}')">Vraag aan 🚗</button>`;
-      return `
-        <div class="match-card">
-          <div class="match-avatar">${o.voornaam[0]}</div>
-          <div class="match-info">
-            <div class="match-name">${o.voornaam}</div>
-            <div class="match-meta">📍 ${o.gemeente} · ${distStr}${inRadius?' · <span style="color:#6dce9a">in straal</span>':''}</div>
-          </div>
-          <div class="match-actions">${btn}</div>
-        </div>`;
+    ${oudersMet.map(o=>{
+      const status=verzMap[o.id];
+      const inR=o.dist!==null&&o.dist<=radius/1000;
+      const distStr=o.dist!==null?`${o.dist.toFixed(1)} km`:'?';
+      let btn='';
+      if(status==='accepted'){
+        const tel=acceptedContacts[o.id]||'';
+        btn=`<div style="text-align:right;"><span class="badge badge-green">✓ Match</span>${tel?`<div style="color:var(--success);font-size:0.78rem;font-weight:600;margin-top:3px;">📞 ${tel}</div>`:''}</div>`;
+      } else if(status==='pending') btn=`<span class="badge badge-blue">⏳</span>`;
+      else if(status==='declined') btn=`<span class="badge badge-muted">✗</span>`;
+      else btn=`<button class="btn btn-primary btn-sm" onclick="sendRequest('${o.id}','${trainingId}')">Vraag 🚗</button>`;
+      return `<div class="match-row">
+        <div class="avatar">${o.voornaam[0]}</div>
+        <div class="match-info">
+          <div class="match-name">${o.voornaam}</div>
+          <div class="match-meta">📍 ${o.gemeente} · ${distStr}${inR?' · <span style="color:#2ecc71">✓ in straal</span>':''}</div>
+        </div>
+        <div>${btn}</div>
+      </div>`;
     }).join('')}`;
 }
 
-async function loadMijnMatches() {
-  // Laad alle geaccepteerde matches (beide richtingen)
-  const { data: sent } = await sbClient.from('carpool_requests')
-    .select('*, naar:naar_id(voornaam, gemeente, telefoon), trainingen(dag, start_tijd, zalen(naam))')
-    .eq('van_id', currentProfile.id).eq('status','accepted');
-  const { data: received } = await sbClient.from('carpool_requests')
-    .select('*, van:van_id(voornaam, gemeente, telefoon), trainingen(dag, start_tijd, zalen(naam))')
-    .eq('naar_id', currentProfile.id).eq('status','accepted');
-
-  const alle = [
-    ...(sent||[]).map(r=>({ naam: r.naar?.voornaam, gemeente: r.naar?.gemeente, telefoon: r.naar?.telefoon, training: r.trainingen })),
-    ...(received||[]).map(r=>({ naam: r.van?.voornaam, gemeente: r.van?.gemeente, telefoon: r.van?.telefoon, training: r.trainingen }))
-  ];
-
-  const card = document.getElementById('mijn-matches-card');
-  const list = document.getElementById('mijn-matches-list');
-  if (!card||!list) return;
-
-  if (!alle.length) { card.style.display='none'; return; }
-  card.style.display='block';
-  list.innerHTML = alle.map(m=>`
-    <div class="match-card">
-      <div class="match-avatar">${m.naam?.[0]||'?'}</div>
-      <div class="match-info">
-        <div class="match-name">${m.naam||'?'} · ${m.gemeente||'?'}</div>
-        <div class="match-meta">🗓 ${m.training?.dag||''} ${m.training?.start_tijd||''} · ${m.training?.zalen?.naam||''}</div>
-        ${m.telefoon?`<div style="margin-top:0.3rem;color:var(--success);font-size:0.85rem;font-weight:600;">📞 ${m.telefoon}</div>`:'<div style="color:var(--muted);font-size:0.82rem;margin-top:0.2rem;">Geen telefoonnummer opgegeven</div>'}
-      </div>
-    </div>`).join('');
+async function sendRequest(naarId,trainingId){
+  const{error}=await sbClient.from('carpool_requests').insert({van_id:currentProfile.id,naar_id:naarId,training_id:trainingId,status:'pending'});
+  if(error) return showToast('❌ '+error.message);
+  showToast('✅ Verzoek verzonden!'); loadMatches();
 }
 
-async function sendRequest(naarId, trainingId) {
-  const { error } = await sbClient.from('carpool_requests').insert({van_id:currentProfile.id,naar_id:naarId,training_id:trainingId,status:'pending'});
-  if (error) return showToast('❌ Verzoek kon niet verzonden worden.');
-  showToast('✅ Carpool-verzoek verzonden!'); loadMatches();
-}
-
-async function loadPendingRequests() {
-  const { data } = await sbClient.from('carpool_requests')
-    .select('*, van:van_id(voornaam, gemeente, telefoon), trainingen(dag, start_tijd, zalen(naam))')
-    .eq('naar_id', currentProfile.id).eq('status','pending');
-  const card = document.getElementById('pending-requests-card');
-  const list = document.getElementById('pending-requests-list');
-  if (!data||!data.length) { if(card) card.style.display='none'; return; }
+async function loadPendingRequests(){
+  const{data}=await sbClient.from('carpool_requests')
+    .select('*, van:van_id(voornaam,gemeente,telefoon), trainingen(dag,start_tijd,zalen(naam))')
+    .eq('naar_id',currentProfile.id).eq('status','pending');
+  const card=document.getElementById('pending-requests-card');
+  const list=document.getElementById('pending-requests-list');
+  if(!data?.length){if(card)card.style.display='none';return;}
   card.style.display='block';
-  list.innerHTML = data.map(r=>`
-    <div class="match-card">
-      <div class="match-avatar">${r.van?.voornaam?.[0]||'?'}</div>
+  list.innerHTML=data.map(r=>`
+    <div class="match-row">
+      <div class="avatar">${r.van?.voornaam?.[0]||'?'}</div>
       <div class="match-info">
         <div class="match-name">${r.van?.voornaam} · ${r.van?.gemeente}</div>
         <div class="match-meta">🗓 ${r.trainingen?.dag} ${r.trainingen?.start_tijd} · ${r.trainingen?.zalen?.naam}</div>
       </div>
-      <div class="match-actions">
+      <div style="display:flex;gap:6px;">
         <button class="btn btn-success btn-sm" onclick="respondRequest('${r.id}','accepted','${r.van?.telefoon||''}')">✓</button>
         <button class="btn btn-danger btn-sm" onclick="respondRequest('${r.id}','declined','')">✗</button>
       </div>
     </div>`).join('');
+  // Notificatie dot
+  const navHome=document.getElementById('nav-home');
+  if(navHome&&!navHome.querySelector('.notif-dot')){
+    const dot=document.createElement('span');dot.className='notif-dot';navHome.appendChild(dot);
+  }
 }
 
-async function respondRequest(requestId, status, telefoon) {
+async function respondRequest(requestId,status,telefoon){
   await sbClient.from('carpool_requests').update({status,updated_at:new Date().toISOString()}).eq('id',requestId);
-  if (status==='accepted') showToast('✅ Verzoek geaccepteerd! Contactinfo zichtbaar onder Mijn matches.');
+  if(status==='accepted') showToast('✅ Geaccepteerd! Contactinfo zichtbaar onder Mijn matches.');
   else showToast('Verzoek geweigerd');
-  await loadPendingRequests();
-  await loadMatches();
-  await loadMijnMatches();
+  // Verwijder notif dot
+  document.querySelector('#nav-home .notif-dot')?.remove();
+  await loadPendingRequests(); await loadMatches(); await loadMijnMatches();
+}
+
+async function loadMijnMatches(){
+  const{data:sent}=await sbClient.from('carpool_requests')
+    .select('*, naar:naar_id(voornaam,gemeente,telefoon), trainingen(dag,start_tijd,zalen(naam))')
+    .eq('van_id',currentProfile.id).eq('status','accepted');
+  const{data:received}=await sbClient.from('carpool_requests')
+    .select('*, van:van_id(voornaam,gemeente,telefoon), trainingen(dag,start_tijd,zalen(naam))')
+    .eq('naar_id',currentProfile.id).eq('status','accepted');
+  const alle=[
+    ...(sent||[]).map(r=>({naam:r.naar?.voornaam,gemeente:r.naar?.gemeente,telefoon:r.naar?.telefoon,training:r.trainingen})),
+    ...(received||[]).map(r=>({naam:r.van?.voornaam,gemeente:r.van?.gemeente,telefoon:r.van?.telefoon,training:r.trainingen}))
+  ];
+  const card=document.getElementById('mijn-matches-card');
+  const list=document.getElementById('mijn-matches-list');
+  if(!card||!list) return;
+  if(!alle.length){card.style.display='none';return;}
+  card.style.display='block';
+  list.innerHTML=alle.map(m=>`
+    <div class="match-row">
+      <div class="avatar">${m.naam?.[0]||'?'}</div>
+      <div class="match-info">
+        <div class="match-name">${m.naam} · ${m.gemeente}</div>
+        <div class="match-meta">🗓 ${m.training?.dag||''} ${m.training?.start_tijd||''} · ${m.training?.zalen?.naam||''}</div>
+        ${m.telefoon?`<div class="match-tel">📞 ${m.telefoon}</div>`:'<div style="color:var(--faint);font-size:0.78rem;">Geen telefoonnummer</div>'}
+      </div>
+    </div>`).join('');
 }
 
 // ═══════════════════════════════════════
 //  PROFIEL VIEW
 // ═══════════════════════════════════════
-function renderProfiel() {
-  if (!currentProfile) return;
-  const p = currentProfile;
-  document.getElementById('profiel-content').innerHTML = `
+function renderProfiel(){
+  if(!currentProfile) return;
+  const p=currentProfile;
+  document.getElementById('profiel-content').innerHTML=`
     <div class="card">
-      <div class="card-title">📋 Mijn gegevens</div>
-      <div style="display:grid;gap:0.6rem;">
-        <div><span style="color:var(--muted);font-size:0.82rem;">Naam</span><div>${p.voornaam} ${p.achternaam}</div></div>
-        <div><span style="color:var(--muted);font-size:0.82rem;">Adres</span><div>${p.straat||''}${p.huisnummer?' '+p.huisnummer:''}, ${p.postcode||''} ${p.gemeente}</div></div>
-        <div><span style="color:var(--muted);font-size:0.82rem;">Locatie</span><div>${p.lat?'✅ Geocodeerd':'⚠️ Niet geocodeerd — adres controleren'}</div></div>
+      <div class="card-title">Mijn gegevens</div>
+      <div style="display:grid;gap:8px;font-size:0.88rem;">
+        <div><span style="color:var(--muted);">Naam</span><div style="font-weight:600;">${p.voornaam} ${p.achternaam}</div></div>
+        <div><span style="color:var(--muted);">Adres</span><div>${p.straat||''}${p.huisnummer?' '+p.huisnummer:''}, ${p.postcode||''} ${p.gemeente}</div></div>
+        <div><span style="color:var(--muted);">Locatie</span><div>${p.lat?'<span style="color:var(--success)">✅ Geocodeerd</span>':'<span style="color:var(--gold)">⚠️ Niet gevonden</span>'}</div></div>
       </div>
     </div>
 
     <div class="card">
-      <div class="card-title">👶 Mijn kinderen</div>
+      <div class="section-header">
+        <div class="card-title" style="margin:0;">Mijn kinderen</div>
+        <button class="btn btn-primary btn-sm" onclick="openKindModal()">➕ Toevoegen</button>
+      </div>
       ${currentKinderen.length===0
-        ? '<div class="alert alert-warn">Nog geen kinderen toegevoegd. Voeg je kind(eren) toe om trainingen en matches te zien.</div>'
-        : currentKinderen.map(k=>`
-          <div class="kind-card">
+        ?'<div class="alert alert-warn">Nog geen kinderen toegevoegd.</div>'
+        :currentKinderen.map(k=>`
+          <div class="kind-row">
             <div>
-              <div class="kind-label">${k.label}</div>
-              <div class="kind-groep">Groep: <span class="badge badge-accent">${k.groepen?.naam||'?'}</span></div>
+              <div style="font-weight:600;font-size:0.9rem;">${k.label}</div>
+              <div style="color:var(--muted);font-size:0.78rem;margin-top:2px;"><span class="badge badge-red">${k.groepen?.naam||'?'}</span></div>
             </div>
-            <div style="display:flex;gap:0.5rem;">
+            <div style="display:flex;gap:6px;">
               <button class="btn btn-secondary btn-sm" onclick="openKindModal('${k.id}')">✏️</button>
               <button class="btn btn-danger btn-sm" onclick="deleteKind('${k.id}')">🗑</button>
             </div>
           </div>`).join('')
       }
-      <button class="btn btn-secondary btn-full" style="margin-top:0.75rem;" onclick="openKindModal()">➕ Kind toevoegen</button>
     </div>
 
     <div class="card">
-      <div class="card-title">🚗 Carpool instellingen</div>
+      <div class="card-title">Carpool</div>
       <div style="display:flex;align-items:center;justify-content:space-between;">
-        <label style="margin:0;color:var(--text);">Beschikbaar als rijdgenoot</label>
+        <label style="margin:0;color:var(--text);font-size:0.9rem;">Beschikbaar als rijdgenoot</label>
         <input type="checkbox" id="carpool-toggle" ${p.carpool_actief?'checked':''} onchange="toggleCarpool(this.checked)" style="width:auto;cursor:pointer;transform:scale(1.4);">
       </div>
     </div>
 
-    <button class="btn btn-secondary btn-full" onclick="logout()" style="margin-top:0.5rem;">Uitloggen</button>
-    <button class="btn btn-ghost btn-full" onclick="document.getElementById('config-screen').classList.add('visible')" style="margin-top:0.25rem;">⚙️ Supabase instellingen</button>`;
+    <button class="btn btn-secondary btn-full" onclick="logout()" style="margin-top:4px;">Uitloggen</button>
+    <button class="btn btn-ghost btn-full" onclick="document.getElementById('config-screen').classList.add('visible')" style="margin-top:4px;font-size:0.78rem;">⚙️ Supabase instellingen</button>`;
 }
 
-async function toggleCarpool(actief) {
+async function toggleCarpool(actief){
   await sbClient.from('profiles').update({carpool_actief:actief}).eq('id',currentProfile.id);
   currentProfile.carpool_actief=actief;
   showToast(actief?'✅ Beschikbaar als rijdgenoot':'Niet meer beschikbaar');
@@ -810,187 +1026,253 @@ async function toggleCarpool(actief) {
 // ═══════════════════════════════════════
 //  ADMIN VIEW
 // ═══════════════════════════════════════
-function buildAdminView() {
-  return `
-    <h2 style="margin-bottom:1.5rem;color:var(--accent);">⚙️ Admin</h2>
-    <div class="tabs">
-      <button class="tab active" onclick="switchAdminTab('codes',this)">Codes</button>
-      <button class="tab" onclick="switchAdminTab('groepen',this)">Groepen</button>
-      <button class="tab" onclick="switchAdminTab('zalen',this)">Zalen</button>
-      <button class="tab" onclick="switchAdminTab('trainingen',this)">Trainingen</button>
+function renderAdmin(){
+  document.getElementById('admin-content').innerHTML=`
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;">
+      <button class="btn btn-primary btn-sm" onclick="showAdminSection('codes')">Codes</button>
+      <button class="btn btn-secondary btn-sm" onclick="showAdminSection('groepen')">Groepen</button>
+      <button class="btn btn-secondary btn-sm" onclick="showAdminSection('zalen')">Zalen</button>
+      <button class="btn btn-secondary btn-sm" onclick="showAdminSection('trainingen')">Trainingen</button>
+      <button class="btn btn-secondary btn-sm" onclick="showAdminSection('seizoen')">🔄 Seizoen</button>
     </div>
-    <div id="admin-tab-codes" class="tab-content active">
-      <div class="card">
-        <div class="card-title">🔑 Nieuwe uitnodigingscode</div>
-        <div class="grid-2">
-          <div class="form-group"><label>Code</label><input type="text" id="new-code" placeholder="GYMCLUB-2025" style="text-transform:uppercase"></div>
-          <div class="form-group"><label>Max gebruik</label><input type="number" id="new-code-max" value="50"></div>
-        </div>
-        <div class="form-group"><label>Vervaldatum (optioneel)</label><input type="date" id="new-code-exp"></div>
-        <button class="btn btn-primary" onclick="createCode()">Code aanmaken</button>
-      </div>
-      <div class="card"><div class="card-title">📋 Bestaande codes</div><div id="codes-list">Laden...</div></div>
-    </div>
-    <div id="admin-tab-groepen" class="tab-content">
-      <div class="card">
-        <div class="card-title">➕ Nieuwe groep</div>
-        <div class="form-group"><label>Naam</label><input type="text" id="new-groep-naam" placeholder="G1, A2, C16+..."></div>
-        <button class="btn btn-primary" onclick="createGroep()">Aanmaken</button>
-      </div>
-      <div class="card"><div class="card-title">Groepen</div><div id="groepen-admin-list">Laden...</div></div>
-    </div>
-    <div id="admin-tab-zalen" class="tab-content">
-      <div class="card">
-        <div class="card-title">➕ Nieuwe zaal</div>
-        <div class="form-group"><label>Naam</label><input type="text" id="new-zaal-naam" placeholder="Sporthal Nazareth"></div>
-        <div class="form-group"><label>Adres</label><input type="text" id="new-zaal-adres" placeholder="Sportlaan 1, 9810 Nazareth"></div>
-        <button class="btn btn-primary" onclick="createZaal()">Aanmaken</button>
-      </div>
-      <div class="card"><div class="card-title">Zalen</div><div id="zalen-admin-list">Laden...</div></div>
-    </div>
-    <div id="admin-tab-trainingen" class="tab-content">
-      <div class="card">
-        <div class="card-title">➕ Nieuw trainingsslot</div>
-        <div class="grid-2">
-          <div class="form-group"><label>Groep</label><select id="new-training-groep"></select></div>
-          <div class="form-group"><label>Zaal</label><select id="new-training-zaal"></select></div>
-        </div>
-        <div class="form-group"><label>Dag</label>
-          <select id="new-training-dag">
-            ${DAGEN.map(d=>`<option value="${d}">${d.charAt(0).toUpperCase()+d.slice(1)}</option>`).join('')}
-          </select>
-        </div>
-        <div class="grid-2">
-          <div class="form-group"><label>Starttijd</label><input type="time" id="new-training-start" value="18:00"></div>
-          <div class="form-group"><label>Eindtijd</label><input type="time" id="new-training-eind" value="20:00"></div>
-        </div>
-        <button class="btn btn-primary" onclick="createTraining()">Aanmaken</button>
-      </div>
-      <div class="card"><div class="card-title">Trainingen</div><div id="trainingen-admin-list">Laden...</div></div>
-    </div>`;
+    <div id="admin-section"></div>`;
+  showAdminSection('codes');
 }
 
-function switchAdminTab(name, el) {
-  document.querySelectorAll('[id^="admin-tab-"]').forEach(t=>t.classList.remove('active'));
-  document.querySelectorAll('#view-admin .tab').forEach(t=>t.classList.remove('active'));
-  document.getElementById('admin-tab-'+name).classList.add('active');
-  if(el) el.classList.add('active');
-  loadAdminData(name);
+function showAdminSection(name){
+  document.querySelectorAll('#admin-content .btn').forEach(b=>{
+    b.className=b.textContent.trim().includes(name.charAt(0).toUpperCase()+name.slice(1))||b.textContent.includes('🔄')&&name==='seizoen'
+      ?'btn btn-primary btn-sm':'btn btn-secondary btn-sm';
+  });
+  const s=document.getElementById('admin-section');
+  if(name==='codes') s.innerHTML=`
+    <div class="card">
+      <div class="card-title">Nieuwe uitnodigingscode</div>
+      <div class="grid-2">
+        <div class="form-group"><label>Code</label><input type="text" id="new-code" placeholder="GYMCLUB-2025" style="text-transform:uppercase"></div>
+        <div class="form-group"><label>Max gebruik</label><input type="number" id="new-code-max" value="50"></div>
+      </div>
+      <div class="form-group"><label>Vervaldatum (opt.)</label><input type="date" id="new-code-exp"></div>
+      <button class="btn btn-primary" onclick="createCode()">Aanmaken</button>
+    </div>
+    <div class="card"><div class="card-title">Bestaande codes</div><div id="codes-list">Laden...</div></div>`;
+  if(name==='groepen') s.innerHTML=`
+    <div class="card">
+      <div class="card-title">Nieuwe groep</div>
+      <div class="form-group"><label>Naam</label><input type="text" id="new-groep-naam" placeholder="G1, A2, C16+..."></div>
+      <button class="btn btn-primary" onclick="createGroep()">Aanmaken</button>
+    </div>
+    <div class="card"><div class="card-title">Groepen</div><div id="groepen-list">Laden...</div></div>`;
+  if(name==='zalen') s.innerHTML=`
+    <div class="card">
+      <div class="card-title">Nieuwe zaal</div>
+      <div class="form-group"><label>Naam</label><input type="text" id="new-zaal-naam" placeholder="Sporthal Nazareth"></div>
+      <div class="form-group"><label>Adres</label><input type="text" id="new-zaal-adres" placeholder="Sportlaan 1, 9810 Nazareth"></div>
+      <button class="btn btn-primary" onclick="createZaal()">Aanmaken</button>
+    </div>
+    <div class="card"><div class="card-title">Zalen</div><div id="zalen-list">Laden...</div></div>`;
+  if(name==='trainingen') s.innerHTML=`
+    <div class="card">
+      <div class="card-title">Nieuw trainingsslot</div>
+      <div class="grid-2">
+        <div class="form-group"><label>Groep</label><select id="new-t-groep"></select></div>
+        <div class="form-group"><label>Zaal</label><select id="new-t-zaal"></select></div>
+      </div>
+      <div class="form-group"><label>Dag</label><select id="new-t-dag">${DAGEN.map(d=>`<option value="${d}">${d.charAt(0).toUpperCase()+d.slice(1)}</option>`).join('')}</select></div>
+      <div class="grid-2">
+        <div class="form-group"><label>Start</label><input type="time" id="new-t-start" value="18:00"></div>
+        <div class="form-group"><label>Eind</label><input type="time" id="new-t-eind" value="20:00"></div>
+      </div>
+      <button class="btn btn-primary" onclick="createTraining()">Aanmaken</button>
+    </div>
+    <div class="card"><div class="card-title">Trainingen</div><div id="trainingen-admin-list">Laden...</div></div>`;
+  if(name==='seizoen') s.innerHTML=`
+    <div class="card">
+      <div class="card-title">🔄 Nieuw seizoen importeren</div>
+      <div class="alert alert-warn">⚠️ Archiveert alle huidige trainingen en importeert het nieuwe schema.</div>
+      <div class="form-group"><label>Seizoensnaam</label><input type="text" id="seizoen-naam" placeholder="2025-2026"></div>
+      <div class="form-group"><label>Excel bestand</label><input type="file" id="seizoen-file" accept=".xlsx,.xls" onchange="previewSeizoen(this)"></div>
+      <div id="seizoen-preview" style="display:none;margin-top:12px;"></div>
+      <button class="btn btn-secondary btn-sm" onclick="downloadSjabloon(event)" style="margin-top:8px;">📥 Sjabloon downloaden</button>
+    </div>
+    <div class="card"><div class="card-title">Seizoensgeschiedenis</div><div id="seizoenen-list">Laden...</div></div>`;
+  loadAdminSection(name);
 }
 
-async function loadAdminData(tab) {
-  if (tab==='codes') {
-    const { data } = await sbClient.from('invite_codes').select('*').order('created_at',{ascending:false});
-    const el = document.getElementById('codes-list'); if(!el) return;
-    el.innerHTML = data?.length ? `<table class="admin-table"><thead><tr><th>Code</th><th>Gebruik</th><th>Vervalt</th></tr></thead><tbody>
+async function loadAdminSection(name){
+  if(name==='codes'){
+    const{data}=await sbClient.from('invite_codes').select('*').order('created_at',{ascending:false});
+    const el=document.getElementById('codes-list');if(!el)return;
+    el.innerHTML=data?.length?`<table class="admin-table"><thead><tr><th>Code</th><th>Gebruik</th><th>Vervalt</th></tr></thead><tbody>
       ${data.map(c=>`<tr><td><code style="color:var(--accent)">${c.code}</code></td><td>${c.used_count}/${c.max_uses}</td><td>${c.expires_at?new Date(c.expires_at).toLocaleDateString('nl-BE'):'—'}</td></tr>`).join('')}
-      </tbody></table>` : '<div style="color:var(--muted);">Nog geen codes.</div>';
+      </tbody></table>`:'<div style="color:var(--muted);">Nog geen codes.</div>';
   }
-  if (tab==='groepen') {
-    const { data } = await sbClient.from('groepen').select('*').order('naam');
-    const el = document.getElementById('groepen-admin-list'); if(!el) return;
-    el.innerHTML = data?.map(g=>`<div class="slot"><span>${g.naam}</span><button class="btn btn-danger btn-sm" onclick="deleteGroep('${g.id}')">✕</button></div>`).join('')||'Geen groepen.';
-    const sel = document.getElementById('new-training-groep');
-    if(sel&&data) sel.innerHTML=data.map(g=>`<option value="${g.id}">${g.naam}</option>`).join('');
+  if(name==='groepen'){
+    const{data}=await sbClient.from('groepen').select('*').order('naam');
+    const el=document.getElementById('groepen-list');if(!el)return;
+    el.innerHTML=data?.map(g=>`<div class="kind-row"><span style="font-weight:500;">${g.naam}</span><button class="btn btn-danger btn-sm" onclick="deleteGroep('${g.id}')">✕</button></div>`).join('')||'Geen groepen.';
+    const sel=document.getElementById('new-t-groep');if(sel&&data)sel.innerHTML=data.map(g=>`<option value="${g.id}">${g.naam}</option>`).join('');
   }
-  if (tab==='zalen') {
-    const { data } = await sbClient.from('zalen').select('*').order('naam');
-    const el = document.getElementById('zalen-admin-list'); if(!el) return;
-    el.innerHTML = data?.map(z=>`<div class="slot"><span>${z.naam}</span><span style="color:var(--muted);font-size:0.82rem;">${z.adres||''}</span></div>`).join('')||'Geen zalen.';
-    const sel = document.getElementById('new-training-zaal');
-    if(sel&&data) sel.innerHTML=data.map(z=>`<option value="${z.id}">${z.naam}</option>`).join('');
+  if(name==='zalen'){
+    const{data}=await sbClient.from('zalen').select('*').order('naam');
+    const el=document.getElementById('zalen-list');if(!el)return;
+    el.innerHTML=data?.map(z=>`<div class="kind-row"><div><div style="font-weight:500;">${z.naam}</div><div style="color:var(--muted);font-size:0.78rem;">${z.adres||''}</div></div></div>`).join('')||'Geen zalen.';
+    const sel=document.getElementById('new-t-zaal');if(sel&&data)sel.innerHTML=data.map(z=>`<option value="${z.id}">${z.naam}</option>`).join('');
   }
-  if (tab==='trainingen') {
-    const { data } = await sbClient.from('trainingen').select('*, groepen(naam), zalen(naam)').eq('active',true).order('dag');
-    const el = document.getElementById('trainingen-admin-list'); if(!el) return;
-    el.innerHTML = data?.length ? `<table class="admin-table"><thead><tr><th>Dag</th><th>Tijd</th><th>Zaal</th><th>Groep</th><th></th></tr></thead><tbody>
+  if(name==='trainingen'){
+    const{data}=await sbClient.from('trainingen').select('*, groepen(naam), zalen(naam)').eq('active',true).order('dag');
+    const el=document.getElementById('trainingen-admin-list');if(!el)return;
+    el.innerHTML=data?.length?`<table class="admin-table"><thead><tr><th>Dag</th><th>Tijd</th><th>Zaal</th><th>Groep</th><th></th></tr></thead><tbody>
       ${data.map(t=>`<tr><td>${t.dag}</td><td>${t.start_tijd}–${t.eind_tijd}</td><td>${t.zalen?.naam||'?'}</td><td>${t.groepen?.naam||'?'}</td><td><button class="btn btn-danger btn-sm" onclick="deleteTraining('${t.id}')">✕</button></td></tr>`).join('')}
-      </tbody></table>` : '<div style="color:var(--muted);">Nog geen trainingen.</div>';
-    loadAdminData('groepen'); loadAdminData('zalen');
+      </tbody></table>`:'<div style="color:var(--muted);">Nog geen trainingen.</div>';
+    loadAdminSection('groepen');loadAdminSection('zalen');
+  }
+  if(name==='seizoen'){
+    const{data}=await sbClient.from('seizoenen').select('*').order('created_at',{ascending:false});
+    const el=document.getElementById('seizoenen-list');if(!el)return;
+    el.innerHTML=data?.length?`<table class="admin-table"><thead><tr><th>Seizoen</th><th>Status</th></tr></thead><tbody>
+      ${data.map(s=>`<tr><td>${s.naam}</td><td>${s.actief?'<span class="badge badge-green">Actief</span>':'<span class="badge badge-muted">Archief</span>'}</td></tr>`).join('')}
+      </tbody></table>`:'<div style="color:var(--muted);">Nog geen seizoenen.</div>';
   }
 }
 
-async function createCode() {
-  const code = document.getElementById('new-code').value.trim().toUpperCase();
-  const max = parseInt(document.getElementById('new-code-max').value)||50;
-  const exp = document.getElementById('new-code-exp').value;
+async function createCode(){
+  const code=document.getElementById('new-code').value.trim().toUpperCase();
+  const max=parseInt(document.getElementById('new-code-max').value)||50;
+  const exp=document.getElementById('new-code-exp').value;
   if(!code) return showToast('Vul een code in');
-  const { error } = await sbClient.from('invite_codes').insert({code,max_uses:max,expires_at:exp||null});
+  const{error}=await sbClient.from('invite_codes').insert({code,max_uses:max,expires_at:exp||null});
   if(error) return showToast('❌ '+error.message);
-  showToast('✅ Code aangemaakt'); document.getElementById('new-code').value=''; loadAdminData('codes');
+  showToast('✅ Code aangemaakt');document.getElementById('new-code').value='';loadAdminSection('codes');
 }
-async function createGroep() {
-  const naam = document.getElementById('new-groep-naam').value.trim();
+async function createGroep(){
+  const naam=document.getElementById('new-groep-naam').value.trim();
   if(!naam) return showToast('Vul een naam in');
-  const { error } = await sbClient.from('groepen').insert({naam});
+  const{error}=await sbClient.from('groepen').insert({naam});
   if(error) return showToast('❌ '+error.message);
-  showToast('✅ Groep aangemaakt'); document.getElementById('new-groep-naam').value=''; loadAdminData('groepen');
+  showToast('✅ Groep aangemaakt');document.getElementById('new-groep-naam').value='';loadAdminSection('groepen');
 }
-async function deleteGroep(id) {
-  if(!confirm('Groep verwijderen? Dit verwijdert ook alle gekoppelde trainingen.')) return;
-  await sbClient.from('groepen').delete().eq('id',id); showToast('Groep verwijderd'); loadAdminData('groepen');
+async function deleteGroep(id){
+  if(!confirm('Groep verwijderen?')) return;
+  await sbClient.from('groepen').delete().eq('id',id);showToast('Verwijderd');loadAdminSection('groepen');
 }
-async function createZaal() {
-  const naam = document.getElementById('new-zaal-naam').value.trim();
-  const adres = document.getElementById('new-zaal-adres').value.trim();
+async function createZaal(){
+  const naam=document.getElementById('new-zaal-naam').value.trim();
+  const adres=document.getElementById('new-zaal-adres').value.trim();
   if(!naam) return showToast('Vul een naam in');
   let lat=null,lng=null;
-  if(adres) {
-    try {
-      const geo = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(adres+', Belgium')}&limit=1`);
-      const gd = await geo.json();
-      if(gd.length>0){lat=parseFloat(gd[0].lat);lng=parseFloat(gd[0].lon);}
-    } catch(e){}
-  }
-  const { error } = await sbClient.from('zalen').insert({naam,adres,lat,lng});
+  if(adres){try{const geo=await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(adres+', Belgium')}&limit=1`);const gd=await geo.json();if(gd.length>0){lat=parseFloat(gd[0].lat);lng=parseFloat(gd[0].lon);}}catch(e){}}
+  const{error}=await sbClient.from('zalen').insert({naam,adres,lat,lng});
   if(error) return showToast('❌ '+error.message);
-  showToast('✅ Zaal aangemaakt'); document.getElementById('new-zaal-naam').value=''; document.getElementById('new-zaal-adres').value=''; loadAdminData('zalen');
+  showToast('✅ Zaal aangemaakt');document.getElementById('new-zaal-naam').value='';document.getElementById('new-zaal-adres').value='';loadAdminSection('zalen');
 }
-async function createTraining() {
-  const groep_id=document.getElementById('new-training-groep').value;
-  const zaal_id=document.getElementById('new-training-zaal').value;
-  const dag=document.getElementById('new-training-dag').value;
-  const start_tijd=document.getElementById('new-training-start').value;
-  const eind_tijd=document.getElementById('new-training-eind').value;
-  const { error } = await sbClient.from('trainingen').insert({groep_id,zaal_id,dag,start_tijd,eind_tijd});
+async function createTraining(){
+  const groep_id=document.getElementById('new-t-groep').value;
+  const zaal_id=document.getElementById('new-t-zaal').value;
+  const dag=document.getElementById('new-t-dag').value;
+  const start_tijd=document.getElementById('new-t-start').value;
+  const eind_tijd=document.getElementById('new-t-eind').value;
+  const{error}=await sbClient.from('trainingen').insert({groep_id,zaal_id,dag,start_tijd,eind_tijd});
   if(error) return showToast('❌ '+error.message);
-  showToast('✅ Training aangemaakt'); loadAdminData('trainingen');
+  showToast('✅ Training aangemaakt');loadAdminSection('trainingen');
 }
-async function deleteTraining(id) {
-  await sbClient.from('trainingen').update({active:false}).eq('id',id); showToast('Training verwijderd'); loadAdminData('trainingen');
+async function deleteTraining(id){
+  await sbClient.from('trainingen').update({active:false}).eq('id',id);showToast('Verwijderd');loadAdminSection('trainingen');
 }
 
 // ═══════════════════════════════════════
-//  NAVIGATIE
+//  SEIZOEN
 // ═══════════════════════════════════════
-function showView(name) {
-  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
-  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
-  const view = document.getElementById('view-'+name);
-  if(view) view.classList.add('active');
-  const idx = ['home','trainingen','matches','profiel','admin'].indexOf(name);
-  const btns = document.querySelectorAll('nav button');
-  if(idx>=0&&btns[idx]) btns[idx].classList.add('active');
-  if(name==='matches') setTimeout(()=>{ if(mapInstance) mapInstance.invalidateSize(); },100);
-  if(name==='profiel') renderProfiel();
-  if(name==='admin') switchAdminTab('codes',null);
+async function checkSeizoenBanner(){
+  const{data:seizoen}=await sbClient.from('seizoenen').select('id,naam').eq('actief',true).single();
+  if(!seizoen) return;
+  const{data:bev}=await sbClient.from('seizoen_bevestigingen').select('id').eq('profiel_id',currentProfile.id).eq('seizoen_id',seizoen.id).single();
+  if(!bev) document.getElementById('seizoen-banner').style.display='block';
+}
+function downloadSjabloon(e){
+  e.preventDefault();
+  const ws_data=[['groep','dag','start','eind','zaal'],['G1','maandag','18:00','19:30','Sporthal Nazareth'],['G1','woensdag','18:00','19:30','Sporthal Nazareth'],['A2','dinsdag','19:00','21:00','Topsporthal Gent']];
+  const wb=XLSX.utils.book_new();
+  const ws=XLSX.utils.aoa_to_sheet(ws_data);
+  ws['!cols']=[{wch:10},{wch:12},{wch:8},{wch:8},{wch:25}];
+  XLSX.utils.book_append_sheet(wb,ws,'Uurrooster');
+  XLSX.writeFile(wb,'rijdmee-sjabloon.xlsx');
+}
+function previewSeizoen(input){
+  const file=input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const wb=XLSX.read(e.target.result,{type:'array'});
+    const ws=wb.Sheets[wb.SheetNames[0]];
+    const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+    const headers=(rows[0]||[]).map(h=>String(h).toLowerCase().trim());
+    const required=['groep','dag','start','eind','zaal'];
+    const missing=required.filter(r=>!headers.includes(r));
+    if(missing.length){showToast('❌ Kolommen ontbreken: '+missing.join(', '));return;}
+    const[gi,di,si,ei,zi]=['groep','dag','start','eind','zaal'].map(k=>headers.indexOf(k));
+    seizoenPreviewData=rows.slice(1).filter(r=>r[gi]).map(r=>({groep:String(r[gi]).trim(),dag:String(r[di]).toLowerCase().trim(),start:String(r[si]).trim(),eind:String(r[ei]).trim(),zaal:String(r[zi]).trim()}));
+    if(!seizoenPreviewData.length){showToast('❌ Geen geldige rijen');return;}
+    const groepen=[...new Set(seizoenPreviewData.map(r=>r.groep))];
+    const zalen=[...new Set(seizoenPreviewData.map(r=>r.zaal))];
+    document.getElementById('seizoen-preview').innerHTML=`
+      <div style="display:flex;gap:16px;margin-bottom:12px;">
+        <div><div style="color:var(--muted);font-size:0.75rem;">Rijen</div><div style="font-size:1.3rem;font-weight:700;color:var(--accent2);">${seizoenPreviewData.length}</div></div>
+        <div><div style="color:var(--muted);font-size:0.75rem;">Groepen</div><div style="font-size:1.3rem;font-weight:700;color:var(--accent2);">${groepen.length}</div></div>
+        <div><div style="color:var(--muted);font-size:0.75rem;">Zalen</div><div style="font-size:1.3rem;font-weight:700;color:var(--accent2);">${zalen.length}</div></div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-primary" onclick="importSeizoen()">✅ Importeren</button>
+        <button class="btn btn-secondary" onclick="document.getElementById('seizoen-preview').style.display='none'">Annuleer</button>
+      </div>`;
+    document.getElementById('seizoen-preview').style.display='block';
+  };
+  reader.readAsArrayBuffer(file);
+}
+async function importSeizoen(){
+  const naam=document.getElementById('seizoen-naam').value.trim();
+  if(!naam) return showToast('Vul een seizoensnaam in');
+  if(!seizoenPreviewData.length) return showToast('Geen data');
+  try{
+    await sbClient.from('trainingen').update({active:false}).eq('active',true);
+    const{data:seizoen,error:sErr}=await sbClient.from('seizoenen').insert({naam,actief:true}).select().single();
+    if(sErr) throw new Error(sErr.message);
+    await sbClient.from('seizoenen').update({actief:false}).neq('id',seizoen.id);
+    const{data:bg}=await sbClient.from('groepen').select('id,naam');
+    const{data:bz}=await sbClient.from('zalen').select('id,naam');
+    const gm={};(bg||[]).forEach(g=>gm[g.naam.toLowerCase()]=g.id);
+    const zm={};(bz||[]).forEach(z=>zm[z.naam.toLowerCase()]=z.id);
+    for(const naam of[...new Set(seizoenPreviewData.map(r=>r.groep))].filter(g=>!gm[g.toLowerCase()])){
+      const{data:ng}=await sbClient.from('groepen').insert({naam}).select().single();
+      if(ng)gm[naam.toLowerCase()]=ng.id;
+    }
+    for(const naam of[...new Set(seizoenPreviewData.map(r=>r.zaal))].filter(z=>!zm[z.toLowerCase()])){
+      const{data:nz}=await sbClient.from('zalen').insert({naam}).select().single();
+      if(nz)zm[naam.toLowerCase()]=nz.id;
+    }
+    const slots=seizoenPreviewData.map(r=>({groep_id:gm[r.groep.toLowerCase()],zaal_id:zm[r.zaal.toLowerCase()],dag:r.dag,start_tijd:r.start,eind_tijd:r.eind,active:true})).filter(s=>s.groep_id&&s.zaal_id);
+    const{error:tErr}=await sbClient.from('trainingen').insert(slots);
+    if(tErr) throw new Error(tErr.message);
+    showToast(`✅ ${slots.length} trainingen geïmporteerd!`);
+    seizoenPreviewData=[];document.getElementById('seizoen-file').value='';
+    document.getElementById('seizoen-preview').style.display='none';
+    loadAdminSection('seizoen');
+  }catch(err){showToast('❌ '+err.message);}
 }
 
 // ═══════════════════════════════════════
 //  UTILS
 // ═══════════════════════════════════════
-function haversine(lat1,lon1,lat2,lon2) {
-  const R=6371, dLat=(lat2-lat1)*Math.PI/180, dLon=(lon2-lon1)*Math.PI/180;
+function haversine(lat1,lon1,lat2,lon2){
+  const R=6371,dLat=(lat2-lat1)*Math.PI/180,dLon=(lon2-lon1)*Math.PI/180;
   const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
   return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
 }
 let toastTimer=null;
-function showToast(msg) {
-  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
-  if(toastTimer) clearTimeout(toastTimer);
+function showToast(msg){
+  const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
+  if(toastTimer)clearTimeout(toastTimer);
   toastTimer=setTimeout(()=>t.classList.remove('show'),3500);
 }
-
 init();
 </script>
 </body>
