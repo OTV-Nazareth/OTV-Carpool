@@ -574,7 +574,7 @@ CREATE POLICY "admin maakt codes" ON invite_codes FOR INSERT
 
 document.getElementById('sql-schema').textContent = SQL_SCHEMA;
 
-let supabase = null;
+let sbClient = null;
 let currentUser = null;
 let currentProfile = null;
 let mapInstance = null;
@@ -585,10 +585,9 @@ let matchMarkers = [];
 let radiusCircle = null;
 
 function getConfig() {
-  return {
-    url: 'https://tiudkjkeiyxeaiaafhay.supabase.co',
-    key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpdWRramtlaXl4ZWFpYWFmaGF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1MDg5MDcsImV4cCI6MjA5NjA4NDkwN30.mJrBv2pVLQmNrslYZwtTdhRUUVpFrYzNBVBYvBgUUZ4'
-  };
+
+  return {url: 'https://tiudkjkeiyxeaiaafhay.supabase.co',
+          key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpdWRramtlaXl4ZWFpYWFmaGF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1MDg5MDcsImV4cCI6MjA5NjA4NDkwN30.mJrBv2pVLQmNrslYZwtTdhRUUVpFrYzNBVBYvBgUUZ4'};
 }
 
 function saveConfig() {
@@ -607,10 +606,10 @@ async function init() {
     return;
   }
 
-  supabase = window.supabase.createClient(cfg.url, cfg.key);
+  sbClient = window.supabase.createClient(cfg.url, cfg.key);
   document.getElementById('app').style.display = 'flex';
 
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { session } } = await sbClient.auth.getSession();
   if (session) {
     currentUser = session.user;
     await loadProfile();
@@ -675,7 +674,7 @@ function switchAuthTab(tab) {
 
 async function loadGroepenForRegister() {
   if (!supabase) return;
-  const { data } = await supabase.from('groepen').select('*').order('naam');
+  const { data } = await sbClient.from('groepen').select('*').order('naam');
   if (data) {
     allGroepen = data;
     const sel = document.getElementById('reg-groep');
@@ -690,7 +689,7 @@ async function login() {
   const pw = document.getElementById('login-pw').value;
   if (!email || !pw) return showToast('Vul alle velden in');
 
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password: pw });
+  const { data, error } = await sbClient.auth.signInWithPassword({ email, password: pw });
   if (error) return showToast('❌ ' + error.message);
   currentUser = data.user;
   await loadProfile();
@@ -713,7 +712,7 @@ async function register() {
     return showToast('Vul alle verplichte velden in');
 
   // Check uitnodigingscode
-  const { data: codeData, error: codeErr } = await supabase
+  const { data: codeData, error: codeErr } = await sbClient
     .from('invite_codes')
     .select('*')
     .eq('code', code)
@@ -737,11 +736,11 @@ async function register() {
   } catch(e) {}
 
   // Maak auth account
-  const { data: authData, error: authErr } = await supabase.auth.signUp({ email, password: pw });
+  const { data: authData, error: authErr } = await sbClient.auth.signUp({ email, password: pw });
   if (authErr) return showToast('❌ ' + authErr.message);
 
   // Maak profiel
-  const { error: profErr } = await supabase.from('profiles').insert({
+  const { error: profErr } = await sbClient.from('profiles').insert({
     id: authData.user.id,
     voornaam: vnaam,
     achternaam: anaam,
@@ -758,7 +757,7 @@ async function register() {
   if (profErr) return showToast('❌ Profiel aanmaken mislukt: ' + profErr.message);
 
   // Update code gebruik
-  await supabase.from('invite_codes')
+  await sbClient.from('invite_codes')
     .update({ used_count: codeData.used_count + 1 })
     .eq('code', code);
 
@@ -768,7 +767,7 @@ async function register() {
 }
 
 async function logout() {
-  await supabase.auth.signOut();
+  await sbClient.auth.signOut();
   currentUser = null;
   currentProfile = null;
   document.getElementById('home-content').style.display = 'none';
@@ -780,7 +779,7 @@ async function logout() {
 //  PROFIEL LADEN
 // ═══════════════════════════════════════════════════
 async function loadProfile() {
-  const { data, error } = await supabase
+  const { data, error } = await sbClient
     .from('profiles')
     .select('*, groepen(naam)')
     .eq('id', currentUser.id)
@@ -832,7 +831,7 @@ const DAG_NL = { maandag:'Ma', dinsdag:'Di', woensdag:'Wo', donderdag:'Do', vrij
 async function loadTrainingen() {
   if (!currentProfile) return;
 
-  const { data } = await supabase
+  const { data } = await sbClient
     .from('trainingen')
     .select('*, zalen(naam, adres, lat, lng)')
     .eq('groep_id', currentProfile.groep_id)
@@ -976,7 +975,7 @@ async function loadMatches() {
   list.innerHTML = '<div style="color:var(--muted);">Matches laden... <span class="spinner"></span></div>';
 
   // Laad alle leden die op hetzelfde moment & zaal trainen
-  const { data: otherTrainingen } = await supabase
+  const { data: otherTrainingen } = await sbClient
     .from('trainingen')
     .select('groep_id')
     .eq('dag', training.dag)
@@ -987,7 +986,7 @@ async function loadMatches() {
   const groepIds = (otherTrainingen || []).map(t => t.groep_id);
   groepIds.push(currentProfile.groep_id);
 
-  const { data: leden } = await supabase
+  const { data: leden } = await sbClient
     .from('profiles')
     .select('id, voornaam, gemeente, straat, lat, lng, carpool_actief')
     .in('groep_id', groepIds)
@@ -1038,7 +1037,7 @@ async function loadMatches() {
   });
 
   // Toon verzoekstatus
-  const { data: mijnVerzoeken } = await supabase
+  const { data: mijnVerzoeken } = await sbClient
     .from('carpool_requests')
     .select('naar_id, status')
     .eq('van_id', currentProfile.id)
@@ -1086,7 +1085,7 @@ async function loadMatches() {
 }
 
 async function sendRequest(naarId, trainingId) {
-  const { error } = await supabase.from('carpool_requests').insert({
+  const { error } = await sbClient.from('carpool_requests').insert({
     van_id: currentProfile.id,
     naar_id: naarId,
     training_id: trainingId,
@@ -1098,7 +1097,7 @@ async function sendRequest(naarId, trainingId) {
 }
 
 async function loadPendingRequests() {
-  const { data } = await supabase
+  const { data } = await sbClient
     .from('carpool_requests')
     .select('*, van:van_id(voornaam, gemeente, telefoon), trainingen(dag, start_tijd, zalen(naam))')
     .eq('naar_id', currentProfile.id)
@@ -1125,7 +1124,7 @@ async function loadPendingRequests() {
 }
 
 async function respondRequest(requestId, status, telefoon) {
-  await supabase.from('carpool_requests')
+  await sbClient.from('carpool_requests')
     .update({ status, updated_at: new Date().toISOString() })
     .eq('id', requestId);
 
@@ -1168,7 +1167,7 @@ function renderProfiel() {
 }
 
 async function toggleCarpool(actief) {
-  await supabase.from('profiles').update({ carpool_actief: actief }).eq('id', currentProfile.id);
+  await sbClient.from('profiles').update({ carpool_actief: actief }).eq('id', currentProfile.id);
   currentProfile.carpool_actief = actief;
   showToast(actief ? '✅ Je bent nu beschikbaar als rijdgenoot' : 'Je staat nu als niet-beschikbaar');
 }
@@ -1254,7 +1253,7 @@ function switchAdminTab(name, el) {
 
 async function loadAdminData(tab) {
   if (tab === 'codes') {
-    const { data } = await supabase.from('invite_codes').select('*').order('created_at', { ascending: false });
+    const { data } = await sbClient.from('invite_codes').select('*').order('created_at', { ascending: false });
     const el = document.getElementById('codes-list');
     if (!el) return;
     el.innerHTML = data?.length ? `
@@ -1272,7 +1271,7 @@ async function loadAdminData(tab) {
   }
 
   if (tab === 'groepen') {
-    const { data } = await supabase.from('groepen').select('*').order('naam');
+    const { data } = await sbClient.from('groepen').select('*').order('naam');
     const el = document.getElementById('groepen-admin-list');
     if (!el) return;
     el.innerHTML = data?.map(g => `<div class="slot"><span>${g.naam}</span></div>`).join('') || 'Geen groepen.';
@@ -1282,7 +1281,7 @@ async function loadAdminData(tab) {
   }
 
   if (tab === 'zalen') {
-    const { data } = await supabase.from('zalen').select('*').order('naam');
+    const { data } = await sbClient.from('zalen').select('*').order('naam');
     const el = document.getElementById('zalen-admin-list');
     if (!el) return;
     el.innerHTML = data?.map(z => `<div class="slot"><span>${z.naam}</span><span style="color:var(--muted);font-size:0.82rem;">${z.adres||''}</span></div>`).join('') || 'Geen zalen.';
@@ -1292,7 +1291,7 @@ async function loadAdminData(tab) {
   }
 
   if (tab === 'trainingen') {
-    const { data } = await supabase
+    const { data } = await sbClient
       .from('trainingen')
       .select('*, groepen(naam), zalen(naam)')
       .eq('active', true)
@@ -1324,7 +1323,7 @@ async function createCode() {
   const max = parseInt(document.getElementById('new-code-max').value) || 20;
   const exp = document.getElementById('new-code-exp').value;
   if (!code) return showToast('Vul een code in');
-  const { error } = await supabase.from('invite_codes').insert({
+  const { error } = await sbClient.from('invite_codes').insert({
     code,
     max_uses: max,
     created_by: currentUser.id,
@@ -1339,7 +1338,7 @@ async function createCode() {
 async function createGroep() {
   const naam = document.getElementById('new-groep-naam').value.trim();
   if (!naam) return showToast('Vul een naam in');
-  const { error } = await supabase.from('groepen').insert({ naam });
+  const { error } = await sbClient.from('groepen').insert({ naam });
   if (error) return showToast('❌ ' + error.message);
   showToast('✅ Groep aangemaakt');
   document.getElementById('new-groep-naam').value = '';
@@ -1360,7 +1359,7 @@ async function createZaal() {
     } catch(e) {}
   }
 
-  const { error } = await supabase.from('zalen').insert({ naam, adres, lat, lng });
+  const { error } = await sbClient.from('zalen').insert({ naam, adres, lat, lng });
   if (error) return showToast('❌ ' + error.message);
   showToast('✅ Zaal aangemaakt');
   document.getElementById('new-zaal-naam').value = '';
@@ -1375,14 +1374,14 @@ async function createTraining() {
   const start_tijd = document.getElementById('new-training-start').value;
   const eind_tijd = document.getElementById('new-training-eind').value;
 
-  const { error } = await supabase.from('trainingen').insert({ groep_id, zaal_id, dag, start_tijd, eind_tijd });
+  const { error } = await sbClient.from('trainingen').insert({ groep_id, zaal_id, dag, start_tijd, eind_tijd });
   if (error) return showToast('❌ ' + error.message);
   showToast('✅ Training aangemaakt');
   loadAdminData('trainingen');
 }
 
 async function deleteTraining(id) {
-  await supabase.from('trainingen').update({ active: false }).eq('id', id);
+  await sbClient.from('trainingen').update({ active: false }).eq('id', id);
   showToast('Training verwijderd');
   loadAdminData('trainingen');
 }
