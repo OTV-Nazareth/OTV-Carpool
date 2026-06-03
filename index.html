@@ -6,353 +6,106 @@
 <meta name="theme-color" content="#1a1f2e">
 <meta name="description" content="Samenrijden naar de training - Gymnastiékclub Nazareth">
 <title>RijdMee · Gymclub Nazareth</title>
-<link rel="manifest" href="#" id="manifest-link">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
 <style>
-  :root {
-    --bg: #0f1219;
-    --bg2: #161b27;
-    --bg3: #1e2535;
-    --border: rgba(255,255,255,0.08);
-    --text: #e8eaf0;
-    --muted: #7a8099;
-    --accent: #e8b86d;
-    --accent2: #6d9de8;
-    --success: #6dce9a;
-    --danger: #e86d6d;
-    --radius: 12px;
-    --font-display: 'DM Serif Display', Georgia, serif;
-    --font-body: 'DM Sans', system-ui, sans-serif;
-  }
-
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-  body {
-    font-family: var(--font-body);
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
-
-  /* ── TYPOGRAPHY ── */
-  h1, h2, h3 { font-family: var(--font-display); font-weight: 400; }
-  h1 { font-size: clamp(2rem, 5vw, 3rem); }
-  h2 { font-size: 1.5rem; }
-  h3 { font-size: 1.1rem; }
-
-  /* ── LAYOUT ── */
-  .app { display: flex; flex-direction: column; min-height: 100vh; }
-
-  header {
-    padding: 1rem 1.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    border-bottom: 1px solid var(--border);
-    background: var(--bg2);
-    position: sticky;
-    top: 0;
-    z-index: 100;
-  }
-
-  .logo {
-    font-family: var(--font-display);
-    font-size: 1.4rem;
-    color: var(--accent);
-    letter-spacing: -0.02em;
-  }
-  .logo span { color: var(--muted); font-size: 0.9rem; font-family: var(--font-body); display: block; font-weight: 300; }
-
-  nav { display: flex; gap: 0.5rem; }
-  nav button {
-    background: none;
-    border: 1px solid var(--border);
-    color: var(--muted);
-    padding: 0.4rem 0.9rem;
-    border-radius: 20px;
-    font-family: var(--font-body);
-    font-size: 0.85rem;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-  nav button.active, nav button:hover {
-    background: var(--bg3);
-    color: var(--text);
-    border-color: var(--accent);
-  }
-
-  main { flex: 1; padding: 1.5rem; max-width: 900px; margin: 0 auto; width: 100%; }
-
-  /* ── VIEWS ── */
-  .view { display: none; animation: fadeIn 0.3s ease; }
-  .view.active { display: block; }
-  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-
-  /* ── CARDS ── */
-  .card {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 1.5rem;
-    margin-bottom: 1rem;
-  }
-  .card-title {
-    font-family: var(--font-display);
-    font-size: 1.1rem;
-    color: var(--accent);
-    margin-bottom: 1rem;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-
-  /* ── FORMS ── */
-  .form-group { margin-bottom: 1rem; }
-  label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 0.35rem; font-weight: 500; }
-  input, select, textarea {
-    width: 100%;
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    color: var(--text);
-    padding: 0.65rem 0.9rem;
-    font-family: var(--font-body);
-    font-size: 0.95rem;
-    transition: border-color 0.2s;
-  }
-  input:focus, select:focus, textarea:focus {
-    outline: none;
-    border-color: var(--accent);
-  }
-  input::placeholder { color: var(--muted); }
-  select option { background: var(--bg3); }
-
-  /* ── BUTTONS ── */
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.4rem;
-    padding: 0.65rem 1.3rem;
-    border-radius: 8px;
-    border: none;
-    font-family: var(--font-body);
-    font-size: 0.95rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-  .btn-primary { background: var(--accent); color: #0f1219; }
-  .btn-primary:hover { background: #f0c87a; }
-  .btn-secondary { background: var(--bg3); color: var(--text); border: 1px solid var(--border); }
-  .btn-secondary:hover { border-color: var(--accent); }
-  .btn-success { background: var(--success); color: #0f1219; }
-  .btn-danger { background: var(--danger); color: #fff; }
-  .btn-sm { padding: 0.35rem 0.8rem; font-size: 0.82rem; }
-  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-  .btn-full { width: 100%; }
-
-  /* ── BADGES ── */
-  .badge {
-    display: inline-block;
-    padding: 0.2rem 0.6rem;
-    border-radius: 20px;
-    font-size: 0.75rem;
-    font-weight: 600;
-  }
-  .badge-accent { background: rgba(232,184,109,0.15); color: var(--accent); }
-  .badge-blue { background: rgba(109,157,232,0.15); color: var(--accent2); }
-  .badge-success { background: rgba(109,206,154,0.15); color: var(--success); }
-  .badge-danger { background: rgba(232,109,109,0.15); color: var(--danger); }
-
-  /* ── MAP ── */
-  #map {
-    height: 320px;
-    border-radius: var(--radius);
-    border: 1px solid var(--border);
-    margin: 1rem 0;
-    overflow: hidden;
-  }
-  .leaflet-container { background: var(--bg3) !important; }
-
-  /* ── MATCH CARDS ── */
-  .match-card {
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 1rem 1.2rem;
-    margin-bottom: 0.75rem;
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    transition: border-color 0.2s;
-  }
-  .match-card:hover { border-color: var(--accent); }
-  .match-avatar {
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
-    background: var(--bg2);
-    border: 2px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: var(--font-display);
-    font-size: 1.2rem;
-    color: var(--accent);
-    flex-shrink: 0;
-  }
-  .match-info { flex: 1; }
-  .match-name { font-weight: 600; font-size: 0.95rem; }
-  .match-meta { color: var(--muted); font-size: 0.82rem; margin-top: 0.2rem; }
-  .match-actions { display: flex; gap: 0.5rem; }
-
-  /* ── TRAINING SLOTS ── */
-  .slot {
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 0.9rem 1.1rem;
-    margin-bottom: 0.6rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-  }
-  .slot-time { font-family: var(--font-display); font-size: 1.1rem; color: var(--accent); }
-  .slot-detail { color: var(--muted); font-size: 0.83rem; margin-top: 0.15rem; }
-  .slot-count { font-size: 0.82rem; color: var(--accent2); }
-
-  /* ── ADMIN TABLE ── */
-  .admin-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
-  .admin-table th { text-align: left; color: var(--muted); padding: 0.5rem 0.8rem; border-bottom: 1px solid var(--border); font-weight: 500; }
-  .admin-table td { padding: 0.6rem 0.8rem; border-bottom: 1px solid rgba(255,255,255,0.04); }
-  .admin-table tr:hover td { background: rgba(255,255,255,0.02); }
-
-  /* ── ALERTS ── */
-  .alert {
-    padding: 0.75rem 1rem;
-    border-radius: 8px;
-    font-size: 0.9rem;
-    margin-bottom: 1rem;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-  .alert-info { background: rgba(109,157,232,0.1); border: 1px solid rgba(109,157,232,0.3); color: var(--accent2); }
-  .alert-success { background: rgba(109,206,154,0.1); border: 1px solid rgba(109,206,154,0.3); color: var(--success); }
-  .alert-error { background: rgba(232,109,109,0.1); border: 1px solid rgba(232,109,109,0.3); color: var(--danger); }
-
-  /* ── TABS ── */
-  .tabs { display: flex; gap: 0.3rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0; }
-  .tab {
-    padding: 0.5rem 1rem;
-    background: none;
-    border: none;
-    color: var(--muted);
-    font-family: var(--font-body);
-    font-size: 0.9rem;
-    cursor: pointer;
-    border-bottom: 2px solid transparent;
-    margin-bottom: -1px;
-    transition: all 0.2s;
-  }
-  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
-
-  .tab-content { display: none; }
-  .tab-content.active { display: block; }
-
-  /* ── HERO ── */
-  .hero {
-    text-align: center;
-    padding: 3rem 1rem;
-  }
-  .hero-icon { font-size: 3.5rem; margin-bottom: 1rem; }
-  .hero h1 { color: var(--accent); margin-bottom: 0.75rem; }
-  .hero p { color: var(--muted); max-width: 420px; margin: 0 auto 2rem; line-height: 1.6; }
-
-  /* ── GRID ── */
-  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-  @media (max-width: 600px) { .grid-2 { grid-template-columns: 1fr; } }
-
-  /* ── DIVIDER ── */
-  .divider { border: none; border-top: 1px solid var(--border); margin: 1.5rem 0; }
-
-  /* ── ROUTE CONTROLS ── */
-  .route-controls {
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 1rem;
-    margin-bottom: 1rem;
-  }
-  .range-label { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem; }
-  input[type=range] {
-    -webkit-appearance: none;
-    background: var(--bg2);
-    height: 4px;
-    border-radius: 2px;
-    border: none;
-    padding: 0;
-  }
-  input[type=range]::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    background: var(--accent);
-    cursor: pointer;
-  }
-
-  /* ── TOAST ── */
-  #toast {
-    position: fixed;
-    bottom: 1.5rem;
-    left: 50%;
-    transform: translateX(-50%) translateY(100px);
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    color: var(--text);
-    padding: 0.75rem 1.5rem;
-    border-radius: 20px;
-    font-size: 0.9rem;
-    z-index: 999;
-    transition: transform 0.3s ease;
-    white-space: nowrap;
-  }
-  #toast.show { transform: translateX(-50%) translateY(0); }
-
-  /* ── SPINNER ── */
-  .spinner {
-    display: inline-block;
-    width: 18px; height: 18px;
-    border: 2px solid var(--border);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: spin 0.7s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  /* ── SUPABASE CONFIG SCREEN ── */
-  #config-screen {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: var(--bg);
-    z-index: 999;
-    padding: 2rem;
-    overflow-y: auto;
-  }
-  #config-screen.visible { display: flex; align-items: flex-start; justify-content: center; }
-
-  /* ── LEAFLET DARK ── */
-  .leaflet-tile { filter: invert(100%) hue-rotate(180deg) brightness(0.85) contrast(0.9); }
+:root {
+  --bg:#0f1219;--bg2:#161b27;--bg3:#1e2535;
+  --border:rgba(255,255,255,0.08);--text:#e8eaf0;--muted:#7a8099;
+  --accent:#e8b86d;--accent2:#6d9de8;--success:#6dce9a;--danger:#e86d6d;
+  --radius:12px;
+  --font-display:'DM Serif Display',Georgia,serif;
+  --font-body:'DM Sans',system-ui,sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-body);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+h1,h2,h3{font-family:var(--font-display);font-weight:400}
+h1{font-size:clamp(2rem,5vw,3rem)}h2{font-size:1.5rem}
+.app{display:flex;flex-direction:column;min-height:100vh}
+header{padding:1rem 1.5rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);background:var(--bg2);position:sticky;top:0;z-index:100}
+.logo{font-family:var(--font-display);font-size:1.4rem;color:var(--accent);letter-spacing:-0.02em}
+.logo span{color:var(--muted);font-size:0.9rem;font-family:var(--font-body);display:block;font-weight:300}
+nav{display:flex;gap:0.5rem}
+nav button{background:none;border:1px solid var(--border);color:var(--muted);padding:0.4rem 0.9rem;border-radius:20px;font-family:var(--font-body);font-size:0.85rem;cursor:pointer;transition:all 0.2s}
+nav button.active,nav button:hover{background:var(--bg3);color:var(--text);border-color:var(--accent)}
+main{flex:1;padding:1.5rem;max-width:900px;margin:0 auto;width:100%}
+.view{display:none;animation:fadeIn 0.3s ease}
+.view.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem;margin-bottom:1rem}
+.card-title{font-family:var(--font-display);font-size:1.1rem;color:var(--accent);margin-bottom:1rem;display:flex;align-items:center;gap:0.5rem}
+.form-group{margin-bottom:1rem}
+label{display:block;font-size:0.85rem;color:var(--muted);margin-bottom:0.35rem;font-weight:500}
+input,select,textarea{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:0.65rem 0.9rem;font-family:var(--font-body);font-size:0.95rem;transition:border-color 0.2s}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent)}
+input::placeholder{color:var(--muted)}
+select option{background:var(--bg3)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:0.4rem;padding:0.65rem 1.3rem;border-radius:8px;border:none;font-family:var(--font-body);font-size:0.95rem;font-weight:500;cursor:pointer;transition:all 0.2s}
+.btn-primary{background:var(--accent);color:#0f1219}.btn-primary:hover{background:#f0c87a}
+.btn-secondary{background:var(--bg3);color:var(--text);border:1px solid var(--border)}.btn-secondary:hover{border-color:var(--accent)}
+.btn-success{background:var(--success);color:#0f1219}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-ghost{background:none;border:none;color:var(--muted);padding:0.3rem 0.6rem;font-size:0.82rem;cursor:pointer}
+.btn-ghost:hover{color:var(--danger)}
+.btn-sm{padding:0.35rem 0.8rem;font-size:0.82rem}
+.btn:disabled{opacity:0.5;cursor:not-allowed}
+.btn-full{width:100%}
+.badge{display:inline-block;padding:0.2rem 0.6rem;border-radius:20px;font-size:0.75rem;font-weight:600}
+.badge-accent{background:rgba(232,184,109,0.15);color:var(--accent)}
+.badge-blue{background:rgba(109,157,232,0.15);color:var(--accent2)}
+.badge-success{background:rgba(109,206,154,0.15);color:var(--success)}
+.badge-danger{background:rgba(232,109,109,0.15);color:var(--danger)}
+#map{height:320px;border-radius:var(--radius);border:1px solid var(--border);margin:1rem 0;overflow:hidden}
+.match-card{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:1rem 1.2rem;margin-bottom:0.75rem;display:flex;align-items:center;gap:1rem;transition:border-color 0.2s}
+.match-card:hover{border-color:var(--accent)}
+.match-avatar{width:44px;height:44px;border-radius:50%;background:var(--bg2);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-size:1.2rem;color:var(--accent);flex-shrink:0}
+.match-info{flex:1}.match-name{font-weight:600;font-size:0.95rem}.match-meta{color:var(--muted);font-size:0.82rem;margin-top:0.2rem}
+.match-actions{display:flex;gap:0.5rem}
+.slot{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:0.9rem 1.1rem;margin-bottom:0.6rem;display:flex;align-items:center;justify-content:space-between;gap:1rem}
+.slot-time{font-family:var(--font-display);font-size:1.1rem;color:var(--accent)}
+.slot-detail{color:var(--muted);font-size:0.83rem;margin-top:0.15rem}
+.admin-table{width:100%;border-collapse:collapse;font-size:0.88rem}
+.admin-table th{text-align:left;color:var(--muted);padding:0.5rem 0.8rem;border-bottom:1px solid var(--border);font-weight:500}
+.admin-table td{padding:0.6rem 0.8rem;border-bottom:1px solid rgba(255,255,255,0.04)}
+.alert{padding:0.75rem 1rem;border-radius:8px;font-size:0.9rem;margin-bottom:1rem;display:flex;align-items:center;gap:0.5rem}
+.alert-info{background:rgba(109,157,232,0.1);border:1px solid rgba(109,157,232,0.3);color:var(--accent2)}
+.alert-success{background:rgba(109,206,154,0.1);border:1px solid rgba(109,206,154,0.3);color:var(--success)}
+.alert-error{background:rgba(232,109,109,0.1);border:1px solid rgba(232,109,109,0.3);color:var(--danger)}
+.alert-warn{background:rgba(232,184,109,0.1);border:1px solid rgba(232,184,109,0.3);color:var(--accent)}
+.tabs{display:flex;gap:0.3rem;margin-bottom:1.5rem;border-bottom:1px solid var(--border);padding-bottom:0}
+.tab{padding:0.5rem 1rem;background:none;border:none;color:var(--muted);font-family:var(--font-body);font-size:0.9rem;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all 0.2s}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.tab-content{display:none}.tab-content.active{display:block}
+.hero{text-align:center;padding:3rem 1rem}
+.hero-icon{font-size:3.5rem;margin-bottom:1rem}
+.hero h1{color:var(--accent);margin-bottom:0.75rem}
+.hero p{color:var(--muted);max-width:420px;margin:0 auto 2rem;line-height:1.6}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+@media(max-width:600px){.grid-2{grid-template-columns:1fr}}
+.divider{border:none;border-top:1px solid var(--border);margin:1.5rem 0}
+.route-controls{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;margin-bottom:1rem}
+.range-label{display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem}
+input[type=range]{-webkit-appearance:none;background:var(--bg2);height:4px;border-radius:2px;border:none;padding:0}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--accent);cursor:pointer}
+#toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(100px);background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:0.75rem 1.5rem;border-radius:20px;font-size:0.9rem;z-index:999;transition:transform 0.3s ease;white-space:nowrap}
+#toast.show{transform:translateX(-50%) translateY(0)}
+.spinner{display:inline-block;width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#config-screen{display:none;position:fixed;inset:0;background:var(--bg);z-index:999;padding:2rem;overflow-y:auto}
+#config-screen.visible{display:flex;align-items:flex-start;justify-content:center}
+.leaflet-tile{filter:invert(100%) hue-rotate(180deg) brightness(0.85) contrast(0.9)}
+/* Kind kaart */
+.kind-card{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:0.9rem 1.1rem;margin-bottom:0.6rem;display:flex;align-items:center;justify-content:space-between;gap:0.75rem}
+.kind-label{font-weight:600;font-size:0.95rem}
+.kind-groep{color:var(--muted);font-size:0.82rem;margin-top:0.15rem}
+/* Modal */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:200;align-items:center;justify-content:center;padding:1rem}
+.modal-overlay.open{display:flex}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem;width:100%;max-width:440px;max-height:90vh;overflow-y:auto}
+.modal-title{font-family:var(--font-display);font-size:1.2rem;color:var(--accent);margin-bottom:1.25rem}
 </style>
 </head>
 <body>
@@ -364,31 +117,36 @@
     <h2 style="font-family:var(--font-display);color:var(--accent);margin-bottom:0.5rem;">Supabase configuratie</h2>
     <p style="color:var(--muted);margin-bottom:1.5rem;font-size:0.9rem;">Vul je Supabase project-gegevens in. Je vindt deze in het Supabase dashboard onder Settings → API.</p>
     <div class="card">
-      <div class="form-group">
-        <label>Supabase URL</label>
-        <input type="text" id="cfg-url" placeholder="https://xxxx.supabase.co">
-      </div>
-      <div class="form-group">
-        <label>Supabase Anon Key</label>
-        <input type="text" id="cfg-key" placeholder="eyJhbGci...">
-      </div>
+      <div class="form-group"><label>Supabase URL</label><input type="text" id="cfg-url" placeholder="https://xxxx.supabase.co"></div>
+      <div class="form-group"><label>Supabase Anon Key</label><input type="text" id="cfg-key" placeholder="eyJhbGci..."></div>
       <button class="btn btn-primary btn-full" onclick="saveConfig()">Opslaan & starten</button>
     </div>
-    <details style="margin-top:1rem;">
-      <summary style="color:var(--muted);font-size:0.85rem;cursor:pointer;">SQL schema bekijken</summary>
-      <pre id="sql-schema" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:1rem;margin-top:0.75rem;font-size:0.75rem;color:var(--muted);overflow-x:auto;white-space:pre-wrap;"></pre>
-    </details>
+  </div>
+</div>
+
+<!-- KIND MODAL -->
+<div class="modal-overlay" id="kind-modal">
+  <div class="modal">
+    <div class="modal-title" id="kind-modal-title">Kind toevoegen</div>
+    <div class="form-group">
+      <label>Label</label>
+      <input type="text" id="kind-label" placeholder="Kind 1, Kind 2, ...">
+    </div>
+    <div class="form-group">
+      <label>Groep</label>
+      <select id="kind-groep"><option value="">Laden...</option></select>
+    </div>
+    <div style="display:flex;gap:0.75rem;margin-top:0.5rem;">
+      <button class="btn btn-primary" onclick="saveKind()" style="flex:1">Opslaan</button>
+      <button class="btn btn-secondary" onclick="closeKindModal()">Annuleer</button>
+    </div>
   </div>
 </div>
 
 <!-- APP -->
 <div class="app" id="app" style="display:none;">
-
 <header>
-  <div class="logo">
-    RijdMee
-    <span>Gymclub Nazareth</span>
-  </div>
+  <div class="logo">RijdMee<span>Gymclub Nazareth</span></div>
   <nav id="main-nav">
     <button class="active" onclick="showView('home')">🏠</button>
     <button onclick="showView('trainingen')">📅</button>
@@ -396,34 +154,27 @@
     <button onclick="showView('profiel')">👤</button>
   </nav>
 </header>
-
 <main>
 
   <!-- HOME -->
   <div class="view active" id="view-home">
-    <div id="auth-container">
-      <!-- Login/Register wordt hier getoond -->
-    </div>
+    <div id="auth-container"></div>
     <div id="home-content" style="display:none;">
       <div style="margin-bottom:1.5rem;">
         <div style="color:var(--muted);font-size:0.85rem;margin-bottom:0.25rem;">Welkom terug,</div>
         <h2 id="welcome-name" style="font-family:var(--font-display);color:var(--accent);"></h2>
       </div>
-
+      <div id="geen-kinderen-alert" style="display:none;">
+        <div class="alert alert-warn">👶 Voeg eerst een kind toe via je profiel om trainingen en matches te zien.</div>
+      </div>
       <div class="card">
         <div class="card-title">🚗 Volgende training</div>
-        <div id="next-training-widget">
-          <div style="color:var(--muted);font-size:0.9rem;">Trainingsschema laden...</div>
-        </div>
+        <div id="next-training-widget"><div style="color:var(--muted);font-size:0.9rem;">Laden...</div></div>
       </div>
-
       <div class="card">
         <div class="card-title">👥 Matches in de buurt</div>
-        <div id="quick-matches">
-          <div style="color:var(--muted);font-size:0.9rem;">Matches laden...</div>
-        </div>
+        <div id="quick-matches"><div style="color:var(--muted);font-size:0.9rem;">Laden...</div></div>
       </div>
-
       <div class="card" id="pending-requests-card" style="display:none;">
         <div class="card-title">🔔 Openstaande verzoeken</div>
         <div id="pending-requests-list"></div>
@@ -434,23 +185,17 @@
   <!-- TRAININGEN -->
   <div class="view" id="view-trainingen">
     <h2 style="margin-bottom:1.5rem;color:var(--accent);">📅 Mijn trainingen</h2>
-    <div id="trainingen-list">
-      <div style="color:var(--muted);">Laden...</div>
-    </div>
+    <div id="trainingen-list"><div style="color:var(--muted);">Laden...</div></div>
   </div>
 
   <!-- MATCHES -->
   <div class="view" id="view-matches">
     <h2 style="margin-bottom:0.5rem;color:var(--accent);">🚗 Rijdgenoten zoeken</h2>
     <p style="color:var(--muted);font-size:0.85rem;margin-bottom:1.5rem;">Selecteer een training om te zien wie er meerijdt vanuit jouw richting.</p>
-
     <div class="form-group">
       <label>Kies training</label>
-      <select id="match-training-select" onchange="loadMatches()">
-        <option value="">— Selecteer —</option>
-      </select>
+      <select id="match-training-select" onchange="loadMatches()"><option value="">— Selecteer —</option></select>
     </div>
-
     <div class="route-controls">
       <div class="range-label">
         <label style="margin:0;">📍 Ophaalstraal</label>
@@ -458,12 +203,8 @@
       </div>
       <input type="range" id="radius-slider" min="1" max="30" value="5" oninput="updateRadius(this.value)">
     </div>
-
     <div id="map"></div>
-
-    <div id="matches-list" style="margin-top:1rem;">
-      <div style="color:var(--muted);font-size:0.9rem;">Kies een training om matches te laden.</div>
-    </div>
+    <div id="matches-list" style="margin-top:1rem;"><div style="color:var(--muted);font-size:0.9rem;">Kies een training om matches te laden.</div></div>
   </div>
 
   <!-- PROFIEL -->
@@ -474,156 +215,51 @@
 
 </main>
 </div>
-
-<!-- TOAST -->
 <div id="toast"></div>
 
 <script>
-// ═══════════════════════════════════════════════════
-//  CONFIG & INIT
-// ═══════════════════════════════════════════════════
-const SQL_SCHEMA = `
--- Uitnodigingscodes
-CREATE TABLE invite_codes (
-  code TEXT PRIMARY KEY,
-  created_by UUID REFERENCES auth.users,
-  max_uses INTEGER DEFAULT 10,
-  used_count INTEGER DEFAULT 0,
-  expires_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Groepen
-CREATE TABLE groepen (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  naam TEXT NOT NULL,
-  kleur TEXT DEFAULT '#e8b86d',
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Zalen
-CREATE TABLE zalen (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  naam TEXT NOT NULL,
-  adres TEXT,
-  lat DOUBLE PRECISION,
-  lng DOUBLE PRECISION
-);
-
--- Trainingsslots
-CREATE TABLE trainingen (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  groep_id UUID REFERENCES groepen(id) ON DELETE CASCADE,
-  zaal_id UUID REFERENCES zalen(id),
-  dag TEXT NOT NULL, -- 'maandag', 'dinsdag', ...
-  start_tijd TEXT NOT NULL, -- '18:00'
-  eind_tijd TEXT NOT NULL,  -- '20:00'
-  active BOOLEAN DEFAULT TRUE
-);
-
--- Profielen
-CREATE TABLE profiles (
-  id UUID PRIMARY KEY REFERENCES auth.users ON DELETE CASCADE,
-  voornaam TEXT NOT NULL,
-  achternaam TEXT NOT NULL,
-  straat TEXT,
-  huisnummer TEXT,
-  gemeente TEXT NOT NULL,
-  postcode TEXT,
-  lat DOUBLE PRECISION,
-  lng DOUBLE PRECISION,
-  groep_id UUID REFERENCES groepen(id),
-  is_admin BOOLEAN DEFAULT FALSE,
-  carpool_actief BOOLEAN DEFAULT TRUE,
-  telefoon TEXT, -- privé, enkel na match
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Carpool verzoeken
-CREATE TABLE carpool_requests (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  van_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
-  naar_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
-  training_id UUID REFERENCES trainingen(id),
-  status TEXT DEFAULT 'pending', -- pending, accepted, declined
-  bericht TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(van_id, naar_id, training_id)
-);
-
--- RLS policies
-ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE carpool_requests ENABLE ROW LEVEL SECURITY;
-ALTER TABLE invite_codes ENABLE ROW LEVEL SECURITY;
-
--- Profiel: eigen rij altijd, anderen zien geen telefoon
-CREATE POLICY "eigen profiel" ON profiles FOR ALL USING (auth.uid() = id);
-CREATE POLICY "andere leden zien beperkt profiel" ON profiles FOR SELECT
-  USING (auth.uid() IS NOT NULL);
-
--- Carpool: enkel eigen verzoeken zien
-CREATE POLICY "eigen verzoeken" ON carpool_requests FOR ALL
-  USING (auth.uid() = van_id OR auth.uid() = naar_id);
-
--- Invite codes: enkel admins aanmaken
-CREATE POLICY "iedereen kan code controleren" ON invite_codes FOR SELECT USING (TRUE);
-CREATE POLICY "admin maakt codes" ON invite_codes FOR INSERT
-  WITH CHECK ((SELECT is_admin FROM profiles WHERE id = auth.uid()));
-`;
-
-document.getElementById('sql-schema').textContent = SQL_SCHEMA;
-
+// ═══════════════════════════════════════
+//  CONFIG
+// ═══════════════════════════════════════
 let sbClient = null;
 let currentUser = null;
 let currentProfile = null;
+let currentKinderen = [];
 let mapInstance = null;
 let allGroepen = [];
-let allTrainingen = [];
 let userTrainingen = [];
 let matchMarkers = [];
 let radiusCircle = null;
+let editingKindId = null;
 
 function getConfig() {
 
   return {url: 'https://tiudkjkeiyxeaiaafhay.supabase.co',
           key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpdWRramtlaXl4ZWFpYWFmaGF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1MDg5MDcsImV4cCI6MjA5NjA4NDkwN30.mJrBv2pVLQmNrslYZwtTdhRUUVpFrYzNBVBYvBgUUZ4'};
 }
-
 function saveConfig() {
   const url = document.getElementById('cfg-url').value.trim();
   const key = document.getElementById('cfg-key').value.trim();
-  if (!url || !key) return showToast('Vul beide velden in');
+  if (!url||!key) return showToast('Vul beide velden in');
   localStorage.setItem('sb_url', url);
   localStorage.setItem('sb_key', key);
   location.reload();
 }
-
 async function init() {
   const cfg = getConfig();
-  if (!cfg.url || !cfg.key) {
-    document.getElementById('config-screen').classList.add('visible');
-    return;
-  }
-
+  if (!cfg.url||!cfg.key) { document.getElementById('config-screen').classList.add('visible'); return; }
   sbClient = window.supabase.createClient(cfg.url, cfg.key);
   document.getElementById('app').style.display = 'flex';
-
   const { data: { session } } = await sbClient.auth.getSession();
-  if (session) {
-    currentUser = session.user;
-    await loadProfile();
-  } else {
-    showAuth();
-  }
+  if (session) { currentUser = session.user; await loadProfile(); }
+  else showAuth();
 }
 
-// ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════
 //  AUTH
-// ═══════════════════════════════════════════════════
-function showAuth(tab = 'login') {
-  const c = document.getElementById('auth-container');
-  c.innerHTML = `
+// ═══════════════════════════════════════
+function showAuth(tab='login') {
+  document.getElementById('auth-container').innerHTML = `
     <div class="hero">
       <div class="hero-icon">🤸</div>
       <h1>RijdMee</h1>
@@ -631,16 +267,14 @@ function showAuth(tab = 'login') {
     </div>
     <div class="card">
       <div class="tabs">
-        <button class="tab ${tab==='login'?'active':''}" onclick="switchAuthTab('login')">Inloggen</button>
-        <button class="tab ${tab==='register'?'active':''}" onclick="switchAuthTab('register')">Registreren</button>
+        <button class="tab ${tab==='login'?'active':''}" onclick="switchAuthTab('login',this)">Inloggen</button>
+        <button class="tab ${tab==='register'?'active':''}" onclick="switchAuthTab('register',this)">Registreren</button>
       </div>
-
       <div class="tab-content ${tab==='login'?'active':''}" id="tab-login">
         <div class="form-group"><label>E-mail</label><input type="email" id="login-email" placeholder="jouw@email.be"></div>
         <div class="form-group"><label>Wachtwoord</label><input type="password" id="login-pw" placeholder="••••••••"></div>
         <button class="btn btn-primary btn-full" onclick="login()">Inloggen</button>
       </div>
-
       <div class="tab-content ${tab==='register'?'active':''}" id="tab-register">
         <div class="alert alert-info">📬 Je hebt een uitnodigingscode nodig van de clubadmin.</div>
         <div class="grid-2">
@@ -655,42 +289,27 @@ function showAuth(tab = 'login') {
           <div class="form-group"><label>Gemeente</label><input type="text" id="reg-gem" placeholder="Nazareth"></div>
         </div>
         <div class="form-group"><label>Postcode</label><input type="text" id="reg-pc" placeholder="9810"></div>
-        <div class="form-group"><label>Groep</label><select id="reg-groep"><option value="">Laden...</option></select></div>
         <div class="form-group"><label>Telefoon <span style="color:var(--muted)">(enkel zichtbaar na match)</span></label><input type="tel" id="reg-tel" placeholder="0470 12 34 56"></div>
         <div class="form-group"><label>Uitnodigingscode</label><input type="text" id="reg-code" placeholder="GYMCLUB-XXXX" style="letter-spacing:0.1em;text-transform:uppercase"></div>
+        <div class="alert alert-info" style="margin-top:0.5rem;">👶 Je voegt kinderen en hun groepen toe na de registratie via je profiel.</div>
         <button class="btn btn-primary btn-full" onclick="register()">Account aanmaken</button>
       </div>
-    </div>
-  `;
-  loadGroepenForRegister();
+    </div>`;
 }
 
-function switchAuthTab(tab) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-  document.querySelector(`#tab-${tab}`).classList.add('active');
-  event.target.classList.add('active');
-}
-
-async function loadGroepenForRegister() {
-  if (!supabase) return;
-  const { data } = await sbClient.from('groepen').select('*').order('naam');
-  if (data) {
-    allGroepen = data;
-    const sel = document.getElementById('reg-groep');
-    if (sel) {
-      sel.innerHTML = data.map(g => `<option value="${g.id}">${g.naam}</option>`).join('');
-    }
-  }
+function switchAuthTab(tab, el) {
+  document.querySelectorAll('#auth-container .tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('#auth-container .tab-content').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+  if(el) el.classList.add('active');
 }
 
 async function login() {
   const email = document.getElementById('login-email').value.trim();
   const pw = document.getElementById('login-pw').value;
-  if (!email || !pw) return showToast('Vul alle velden in');
-
+  if (!email||!pw) return showToast('Vul alle velden in');
   const { data, error } = await sbClient.auth.signInWithPassword({ email, password: pw });
-  if (error) return showToast('❌ ' + error.message);
+  if (error) return showToast('❌ '+error.message);
   currentUser = data.user;
   await loadProfile();
 }
@@ -704,441 +323,384 @@ async function register() {
   const hnr = document.getElementById('reg-hnr').value.trim();
   const gem = document.getElementById('reg-gem').value.trim();
   const pc = document.getElementById('reg-pc').value.trim();
-  const groep = document.getElementById('reg-groep').value;
   const tel = document.getElementById('reg-tel').value.trim();
   const code = document.getElementById('reg-code').value.trim().toUpperCase();
 
-  if (!vnaam || !anaam || !email || !pw || !straat || !gem || !groep || !code)
+  if (!vnaam||!anaam||!email||!pw||!straat||!gem||!code)
     return showToast('Vul alle verplichte velden in');
 
-  // Check uitnodigingscode
-  const { data: codeData, error: codeErr } = await sbClient
-    .from('invite_codes')
-    .select('*')
-    .eq('code', code)
-    .single();
-
-  if (codeErr || !codeData) return showToast('❌ Ongeldige uitnodigingscode');
+  const { data: codeData, error: codeErr } = await sbClient.from('invite_codes').select('*').eq('code',code).single();
+  if (codeErr||!codeData) return showToast('❌ Ongeldige uitnodigingscode');
   if (codeData.used_count >= codeData.max_uses) return showToast('❌ Code is al maximaal gebruikt');
-  if (codeData.expires_at && new Date(codeData.expires_at) < new Date())
-    return showToast('❌ Code is verlopen');
+  if (codeData.expires_at && new Date(codeData.expires_at) < new Date()) return showToast('❌ Code is verlopen');
 
-  // Geocodeer adres via Nominatim
+  // Geocodeer
   const adres = `${straat}${hnr?' '+hnr:''}, ${pc} ${gem}, Belgium`;
-  let lat = null, lng = null;
+  let lat=null, lng=null;
   try {
     const geo = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(adres)}&limit=1`);
-    const geoData = await geo.json();
-    if (geoData.length > 0) {
-      lat = parseFloat(geoData[0].lat);
-      lng = parseFloat(geoData[0].lon);
-    }
+    const gd = await geo.json();
+    if (gd.length>0) { lat=parseFloat(gd[0].lat); lng=parseFloat(gd[0].lon); }
   } catch(e) {}
 
-  // Maak auth account
   const { data: authData, error: authErr } = await sbClient.auth.signUp({ email, password: pw });
-  if (authErr) return showToast('❌ ' + authErr.message);
+  if (authErr) return showToast('❌ '+authErr.message);
 
-  // Maak profiel
   const { error: profErr } = await sbClient.from('profiles').insert({
-    id: authData.user.id,
-    voornaam: vnaam,
-    achternaam: anaam,
-    straat,
-    huisnummer: hnr || null,
-    gemeente: gem,
-    postcode: pc,
-    lat, lng,
-    groep_id: groep,
-    telefoon: tel || null,
-    carpool_actief: true
+    id: authData.user.id, voornaam: vnaam, achternaam: anaam,
+    straat, huisnummer: hnr||null, gemeente: gem, postcode: pc,
+    lat, lng, telefoon: tel||null, carpool_actief: true
   });
+  if (profErr) return showToast('❌ Profiel aanmaken mislukt: '+profErr.message);
 
-  if (profErr) return showToast('❌ Profiel aanmaken mislukt: ' + profErr.message);
-
-  // Update code gebruik
-  await sbClient.from('invite_codes')
-    .update({ used_count: codeData.used_count + 1 })
-    .eq('code', code);
-
-  showToast('✅ Account aangemaakt!');
+  await sbClient.from('invite_codes').update({ used_count: codeData.used_count+1 }).eq('code',code);
+  showToast('✅ Account aangemaakt! Voeg nu je kind(eren) toe.');
   currentUser = authData.user;
   await loadProfile();
 }
 
 async function logout() {
   await sbClient.auth.signOut();
-  currentUser = null;
-  currentProfile = null;
-  document.getElementById('home-content').style.display = 'none';
-  showAuth();
-  showView('home');
+  currentUser=null; currentProfile=null; currentKinderen=[];
+  document.getElementById('home-content').style.display='none';
+  showAuth(); showView('home');
 }
 
-// ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════
 //  PROFIEL LADEN
-// ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════
 async function loadProfile() {
-  const { data, error } = await sbClient
-    .from('profiles')
-    .select('*, groepen(naam)')
-    .eq('id', currentUser.id)
-    .single();
-
-  if (error || !data) {
-    // Nieuw profiel nodig
-    showAuth('register');
-    return;
-  }
-
+  const { data, error } = await sbClient.from('profiles').select('*').eq('id', currentUser.id).single();
+  if (error||!data) { showAuth('register'); return; }
   currentProfile = data;
+
+  // Laad kinderen
+  const { data: kinderen } = await sbClient.from('kinderen').select('*, groepen(naam)').eq('ouder_id', currentUser.id).order('label');
+  currentKinderen = kinderen || [];
+
   document.getElementById('auth-container').innerHTML = '';
   document.getElementById('home-content').style.display = 'block';
-  document.getElementById('welcome-name').textContent = data.voornaam + ' ' + data.achternaam;
+  document.getElementById('welcome-name').textContent = data.voornaam+' '+data.achternaam;
 
   // Admin nav
   if (data.is_admin) {
     const nav = document.getElementById('main-nav');
     if (!document.getElementById('admin-nav-btn')) {
       const btn = document.createElement('button');
-      btn.id = 'admin-nav-btn';
-      btn.textContent = '⚙️';
-      btn.onclick = () => showView('admin');
-      nav.appendChild(btn);
-
-      // Admin view toevoegen
+      btn.id='admin-nav-btn'; btn.textContent='⚙️';
+      btn.onclick=()=>showView('admin'); nav.appendChild(btn);
       const main = document.querySelector('main');
-      const adminView = document.createElement('div');
-      adminView.className = 'view';
-      adminView.id = 'view-admin';
-      adminView.innerHTML = buildAdminView();
-      main.appendChild(adminView);
+      const av = document.createElement('div');
+      av.className='view'; av.id='view-admin'; av.innerHTML=buildAdminView();
+      main.appendChild(av);
     }
   }
 
-  await loadTrainingen();
-  await loadNextTraining();
-  await loadPendingRequests();
+  if (currentKinderen.length===0) {
+    document.getElementById('geen-kinderen-alert').style.display='block';
+    document.getElementById('next-training-widget').innerHTML='<div style="color:var(--muted);font-size:0.9rem;">Voeg eerst een kind toe.</div>';
+    document.getElementById('quick-matches').innerHTML='<div style="color:var(--muted);font-size:0.9rem;">Voeg eerst een kind toe.</div>';
+  } else {
+    document.getElementById('geen-kinderen-alert').style.display='none';
+    await loadTrainingen();
+    await loadNextTraining();
+    await loadPendingRequests();
+  }
   initMap();
 }
 
-// ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════
+//  KINDEREN
+// ═══════════════════════════════════════
+async function openKindModal(kindId=null) {
+  editingKindId = kindId;
+  // Laad groepen
+  const { data: groepen } = await sbClient.from('groepen').select('*').order('naam');
+  allGroepen = groepen || [];
+  const sel = document.getElementById('kind-groep');
+  if (allGroepen.length===0) {
+    showToast('⚠️ Er zijn nog geen groepen. De admin moet eerst groepen aanmaken.');
+    return;
+  }
+  sel.innerHTML = allGroepen.map(g=>`<option value="${g.id}">${g.naam}</option>`).join('');
+
+  if (kindId) {
+    const kind = currentKinderen.find(k=>k.id===kindId);
+    document.getElementById('kind-modal-title').textContent = 'Kind bewerken';
+    document.getElementById('kind-label').value = kind?.label||'';
+    sel.value = kind?.groep_id||'';
+  } else {
+    document.getElementById('kind-modal-title').textContent = 'Kind toevoegen';
+    const volgend = currentKinderen.length+1;
+    document.getElementById('kind-label').value = `Kind ${volgend}`;
+    sel.value = allGroepen[0]?.id||'';
+  }
+  document.getElementById('kind-modal').classList.add('open');
+}
+
+function closeKindModal() {
+  document.getElementById('kind-modal').classList.remove('open');
+  editingKindId = null;
+}
+
+async function saveKind() {
+  const label = document.getElementById('kind-label').value.trim();
+  const groep_id = document.getElementById('kind-groep').value;
+  if (!label||!groep_id) return showToast('Vul alle velden in');
+
+  if (editingKindId) {
+    const { error } = await sbClient.from('kinderen').update({ label, groep_id }).eq('id', editingKindId);
+    if (error) return showToast('❌ '+error.message);
+    showToast('✅ Kind bijgewerkt');
+  } else {
+    const { error } = await sbClient.from('kinderen').insert({ ouder_id: currentUser.id, label, groep_id });
+    if (error) return showToast('❌ '+error.message);
+    showToast('✅ Kind toegevoegd');
+  }
+  closeKindModal();
+  await loadProfile();
+  renderProfiel();
+}
+
+async function deleteKind(kindId) {
+  if (!confirm('Kind verwijderen?')) return;
+  await sbClient.from('kinderen').delete().eq('id', kindId);
+  showToast('Kind verwijderd');
+  await loadProfile();
+  renderProfiel();
+}
+
+// ═══════════════════════════════════════
 //  TRAININGEN
-// ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════
 const DAGEN = ['maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag','zondag'];
-const DAG_NL = { maandag:'Ma', dinsdag:'Di', woensdag:'Wo', donderdag:'Do', vrijdag:'Vr', zaterdag:'Za', zondag:'Zo' };
+const DAG_NL = {maandag:'Ma',dinsdag:'Di',woensdag:'Wo',donderdag:'Do',vrijdag:'Vr',zaterdag:'Za',zondag:'Zo'};
 
 async function loadTrainingen() {
-  if (!currentProfile) return;
+  if (!currentKinderen.length) return;
+  const groepIds = [...new Set(currentKinderen.map(k=>k.groep_id))];
+  const { data } = await sbClient.from('trainingen')
+    .select('*, zalen(naam, adres, lat, lng), groepen(naam)')
+    .in('groep_id', groepIds).eq('active', true);
+  userTrainingen = data||[];
 
-  const { data } = await sbClient
-    .from('trainingen')
-    .select('*, zalen(naam, adres, lat, lng)')
-    .eq('groep_id', currentProfile.groep_id)
-    .eq('active', true);
-
-  userTrainingen = data || [];
-
-  // Vul training selects
+  // Match select
   const sel = document.getElementById('match-training-select');
   if (sel) {
     sel.innerHTML = '<option value="">— Selecteer training —</option>' +
-      userTrainingen.map(t =>
-        `<option value="${t.id}">${DAG_NL[t.dag] || t.dag} ${t.start_tijd} · ${t.zalen?.naam || 'onbekend'}</option>`
-      ).join('');
+      userTrainingen.map(t => {
+        const kindLabel = currentKinderen.find(k=>k.groep_id===t.groep_id)?.label||'';
+        return `<option value="${t.id}">${DAG_NL[t.dag]||t.dag} ${t.start_tijd} · ${t.zalen?.naam||'?'} (${kindLabel||t.groepen?.naam||'?'})</option>`;
+      }).join('');
   }
 
   // Trainingen view
   const list = document.getElementById('trainingen-list');
-  if (list) {
-    if (userTrainingen.length === 0) {
-      list.innerHTML = '<div class="alert alert-info">Geen trainingen gevonden voor jouw groep.</div>';
-    } else {
-      list.innerHTML = DAGEN.map(dag => {
-        const slots = userTrainingen.filter(t => t.dag === dag);
-        if (!slots.length) return '';
-        return `<div style="margin-bottom:1.5rem;">
-          <div style="color:var(--muted);font-size:0.8rem;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.5rem;">${dag}</div>
-          ${slots.map(t => `
-            <div class="slot">
-              <div>
-                <div class="slot-time">${t.start_tijd} – ${t.eind_tijd}</div>
-                <div class="slot-detail">📍 ${t.zalen?.naam || '?'} · ${t.zalen?.adres || ''}</div>
-              </div>
-              <button class="btn btn-secondary btn-sm" onclick="goToMatches('${t.id}')">Vind rijdgenoot</button>
-            </div>
-          `).join('')}
-        </div>`;
-      }).join('');
-    }
+  if (!list) return;
+  if (!userTrainingen.length) {
+    list.innerHTML = '<div class="alert alert-info">Geen trainingen gevonden. Controleer of de admin het schema al heeft ingevoerd.</div>';
+    return;
   }
+  list.innerHTML = DAGEN.map(dag => {
+    const slots = userTrainingen.filter(t=>t.dag===dag);
+    if (!slots.length) return '';
+    return `<div style="margin-bottom:1.5rem;">
+      <div style="color:var(--muted);font-size:0.8rem;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.5rem;">${dag}</div>
+      ${slots.map(t => {
+        const kindLabel = currentKinderen.find(k=>k.groep_id===t.groep_id)?.label||t.groepen?.naam||'?';
+        return `<div class="slot">
+          <div>
+            <div class="slot-time">${t.start_tijd} – ${t.eind_tijd}</div>
+            <div class="slot-detail">📍 ${t.zalen?.naam||'?'} · <span class="badge badge-accent" style="font-size:0.75rem;">${kindLabel}</span></div>
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="goToMatches('${t.id}')">🚗 Vind rijdgenoot</button>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }).join('');
 }
 
 async function loadNextTraining() {
   const widget = document.getElementById('next-training-widget');
-  if (!widget || !userTrainingen.length) return;
-
+  if (!widget||!userTrainingen.length) return;
   const now = new Date();
-  const dayIndex = now.getDay(); // 0=zondag
   const dagOrder = ['zondag','maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag'];
-
-  // Zoek volgende training
   let found = null;
-  for (let i = 0; i < 7; i++) {
-    const checkDay = dagOrder[(dayIndex + i) % 7];
-    const slots = userTrainingen.filter(t => t.dag === checkDay);
+  for (let i=0;i<7;i++) {
+    const checkDay = dagOrder[(now.getDay()+i)%7];
+    const slots = userTrainingen.filter(t=>t.dag===checkDay);
     for (const slot of slots) {
-      if (i === 0) {
-        const [h, m] = slot.start_tijd.split(':').map(Number);
-        const slotTime = new Date(); slotTime.setHours(h, m, 0);
-        if (slotTime <= now) continue;
+      if (i===0) {
+        const [h,m] = slot.start_tijd.split(':').map(Number);
+        const st = new Date(); st.setHours(h,m,0);
+        if (st<=now) continue;
       }
-      found = { slot, daysAway: i };
-      break;
+      found={slot,daysAway:i}; break;
     }
     if (found) break;
   }
-
-  if (!found) {
-    widget.innerHTML = '<div style="color:var(--muted);">Geen komende training gevonden.</div>';
-    return;
-  }
-
-  const { slot, daysAway } = found;
-  const label = daysAway === 0 ? 'Vanavond' : daysAway === 1 ? 'Morgen' : `Over ${daysAway} dagen`;
-
+  if (!found) { widget.innerHTML='<div style="color:var(--muted);">Geen komende training gevonden.</div>'; return; }
+  const {slot,daysAway} = found;
+  const label = daysAway===0?'Vanavond':daysAway===1?'Morgen':`Over ${daysAway} dagen`;
+  const kindLabel = currentKinderen.find(k=>k.groep_id===slot.groep_id)?.label||slot.groepen?.naam||'?';
   widget.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.75rem;">
       <div>
         <div style="font-size:1.5rem;font-family:var(--font-display);color:var(--accent);">${slot.start_tijd}</div>
-        <div style="color:var(--muted);font-size:0.85rem;">${label} · ${slot.zalen?.naam || '?'}</div>
+        <div style="color:var(--muted);font-size:0.85rem;">${label} · ${slot.zalen?.naam||'?'} · <span style="color:var(--accent)">${kindLabel}</span></div>
       </div>
-      <div style="display:flex;gap:0.5rem;align-items:center;">
-        <span class="badge badge-accent">${slot.dag}</span>
-        <button class="btn btn-secondary btn-sm" onclick="goToMatches('${slot.id}')">🚗 Vind rijdgenoot</button>
-      </div>
-    </div>
-  `;
+      <button class="btn btn-secondary btn-sm" onclick="goToMatches('${slot.id}')">🚗 Vind rijdgenoot</button>
+    </div>`;
 }
 
 function goToMatches(trainingId) {
   showView('matches');
   const sel = document.getElementById('match-training-select');
-  if (sel) { sel.value = trainingId; loadMatches(); }
+  if (sel) { sel.value=trainingId; loadMatches(); }
 }
 
-// ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════
 //  KAART & MATCHES
-// ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════
 function initMap() {
   if (mapInstance) return;
-
-  const center = currentProfile?.lat
-    ? [currentProfile.lat, currentProfile.lng]
-    : [50.967, 3.735]; // Nazareth
-
+  const center = currentProfile?.lat ? [currentProfile.lat, currentProfile.lng] : [50.967, 3.735];
   mapInstance = L.map('map').setView(center, 12);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap'
-  }).addTo(mapInstance);
-
-  // Eigen marker
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(mapInstance);
   if (currentProfile?.lat) {
     L.marker([currentProfile.lat, currentProfile.lng], {
-      icon: L.divIcon({
-        html: '<div style="background:var(--accent,#e8b86d);width:14px;height:14px;border-radius:50%;border:2px solid white;"></div>',
-        iconSize: [14,14], iconAnchor: [7,7], className: ''
-      })
+      icon: L.divIcon({html:'<div style="background:#e8b86d;width:14px;height:14px;border-radius:50%;border:2px solid white;"></div>',iconSize:[14,14],iconAnchor:[7,7],className:''})
     }).addTo(mapInstance).bindPopup('📍 Jij');
   }
 }
 
 function updateRadius(val) {
-  document.getElementById('radius-value').textContent = val + ' km';
-  if (radiusCircle && currentProfile?.lat) {
-    radiusCircle.setRadius(val * 1000);
-  }
+  document.getElementById('radius-value').textContent = val+' km';
+  if (radiusCircle&&currentProfile?.lat) radiusCircle.setRadius(val*1000);
 }
 
 async function loadMatches() {
   const trainingId = document.getElementById('match-training-select').value;
   const list = document.getElementById('matches-list');
+  if (!trainingId) { list.innerHTML='<div style="color:var(--muted);font-size:0.9rem;">Kies een training om matches te laden.</div>'; return; }
 
-  if (!trainingId) {
-    list.innerHTML = '<div style="color:var(--muted);font-size:0.9rem;">Kies een training om matches te laden.</div>';
-    return;
-  }
-
-  const training = userTrainingen.find(t => t.id === trainingId);
+  const training = userTrainingen.find(t=>t.id===trainingId);
   if (!training) return;
+  list.innerHTML='<div style="color:var(--muted);">Matches laden... <span class="spinner"></span></div>';
 
-  list.innerHTML = '<div style="color:var(--muted);">Matches laden... <span class="spinner"></span></div>';
+  // Alle groepen die op hetzelfde moment in dezelfde zaal trainen
+  const { data: parallel } = await sbClient.from('trainingen').select('groep_id')
+    .eq('dag', training.dag).eq('start_tijd', training.start_tijd).eq('zaal_id', training.zaal_id);
 
-  // Laad alle leden die op hetzelfde moment & zaal trainen
-  const { data: otherTrainingen } = await sbClient
-    .from('trainingen')
-    .select('groep_id')
-    .eq('dag', training.dag)
-    .eq('start_tijd', training.start_tijd)
-    .eq('zaal_id', training.zaal_id)
-    .neq('groep_id', currentProfile.groep_id);
+  const groepIds = [...new Set((parallel||[]).map(t=>t.groep_id))];
 
-  const groepIds = (otherTrainingen || []).map(t => t.groep_id);
-  groepIds.push(currentProfile.groep_id);
+  // Alle ouders met kinderen in die groepen (niet zichzelf)
+  const { data: andereKinderen } = await sbClient.from('kinderen')
+    .select('ouder_id, groep_id').in('groep_id', groepIds).neq('ouder_id', currentUser.id);
 
-  const { data: leden } = await sbClient
-    .from('profiles')
-    .select('id, voornaam, gemeente, straat, lat, lng, carpool_actief')
-    .in('groep_id', groepIds)
-    .eq('carpool_actief', true)
-    .neq('id', currentProfile.id);
+  const ouderIds = [...new Set((andereKinderen||[]).map(k=>k.ouder_id))];
 
-  // Verwijder oude markers
-  matchMarkers.forEach(m => m.remove());
-  matchMarkers = [];
-  if (radiusCircle) { radiusCircle.remove(); radiusCircle = null; }
+  matchMarkers.forEach(m=>m.remove()); matchMarkers=[];
+  if (radiusCircle) { radiusCircle.remove(); radiusCircle=null; }
 
-  if (!leden || leden.length === 0) {
-    list.innerHTML = '<div class="alert alert-info">Geen andere leden gevonden voor dit trainingsmoment.</div>';
-    return;
+  if (!ouderIds.length) { list.innerHTML='<div class="alert alert-info">Geen andere ouders gevonden voor dit trainingsmoment.</div>'; return; }
+
+  const { data: ouders } = await sbClient.from('profiles')
+    .select('id, voornaam, gemeente, lat, lng, carpool_actief')
+    .in('id', ouderIds).eq('carpool_actief', true);
+
+  if (!ouders||!ouders.length) { list.innerHTML='<div class="alert alert-info">Geen beschikbare rijdgenoten voor dit moment.</div>'; return; }
+
+  const radius = parseInt(document.getElementById('radius-slider').value)*1000;
+  if (currentProfile?.lat&&mapInstance) {
+    radiusCircle = L.circle([currentProfile.lat, currentProfile.lng],{radius,color:'#e8b86d',fillColor:'#e8b86d',fillOpacity:0.06,weight:1.5}).addTo(mapInstance);
   }
 
-  // Bereken afstand & toon op kaart
-  const radius = parseInt(document.getElementById('radius-slider').value) * 1000;
+  const oudersMet = ouders.map(o => {
+    const dist = currentProfile?.lat&&o.lat ? haversine(currentProfile.lat,currentProfile.lng,o.lat,o.lng) : null;
+    // Welke kinderen heeft deze ouder in de parallelle groepen?
+    const hunKinderen = andereKinderen.filter(k=>k.ouder_id===o.id);
+    return {...o, dist, hunKinderen};
+  }).sort((a,b)=>(a.dist??999)-(b.dist??999));
 
-  if (currentProfile?.lat && mapInstance) {
-    radiusCircle = L.circle([currentProfile.lat, currentProfile.lng], {
-      radius,
-      color: '#e8b86d',
-      fillColor: '#e8b86d',
-      fillOpacity: 0.06,
-      weight: 1.5
-    }).addTo(mapInstance);
-  }
-
-  const ledenMetAfstand = leden.map(l => {
-    const dist = currentProfile?.lat && l.lat
-      ? haversine(currentProfile.lat, currentProfile.lng, l.lat, l.lng)
-      : null;
-    return { ...l, dist };
-  }).sort((a, b) => (a.dist ?? 999) - (b.dist ?? 999));
-
-  // Markers op kaart
-  ledenMetAfstand.forEach(l => {
-    if (!l.lat || !mapInstance) return;
-    const inRadius = l.dist !== null && l.dist <= radius / 1000;
-    const marker = L.marker([l.lat, l.lng], {
-      icon: L.divIcon({
-        html: `<div style="background:${inRadius ? 'var(--success,#6dce9a)' : 'var(--accent2,#6d9de8)'};width:12px;height:12px;border-radius:50%;border:2px solid white;"></div>`,
-        iconSize: [12,12], iconAnchor: [6,6], className: ''
-      })
-    }).addTo(mapInstance).bindPopup(`${l.voornaam} · ${l.gemeente}`);
-    matchMarkers.push(marker);
+  oudersMet.forEach(o => {
+    if (!o.lat||!mapInstance) return;
+    const inRadius = o.dist!==null&&o.dist<=radius/1000;
+    const m = L.marker([o.lat,o.lng],{
+      icon:L.divIcon({html:`<div style="background:${inRadius?'#6dce9a':'#6d9de8'};width:12px;height:12px;border-radius:50%;border:2px solid white;"></div>`,iconSize:[12,12],iconAnchor:[6,6],className:''})
+    }).addTo(mapInstance).bindPopup(`${o.voornaam} · ${o.gemeente}`);
+    matchMarkers.push(m);
   });
 
-  // Toon verzoekstatus
-  const { data: mijnVerzoeken } = await sbClient
-    .from('carpool_requests')
-    .select('naar_id, status')
-    .eq('van_id', currentProfile.id)
-    .eq('training_id', trainingId);
-
-  const verzoekenMap = {};
-  (mijnVerzoeken || []).forEach(v => { verzoekenMap[v.naar_id] = v.status; });
+  const { data: mijnVerzoeken } = await sbClient.from('carpool_requests')
+    .select('naar_id, status').eq('van_id', currentProfile.id).eq('training_id', trainingId);
+  const verzMap = {};
+  (mijnVerzoeken||[]).forEach(v=>{verzMap[v.naar_id]=v.status;});
 
   list.innerHTML = `
-    <div style="display:flex;align-items:center;gap:1rem;margin-bottom:0.75rem;flex-wrap:wrap;">
-      <span style="font-size:0.82rem;color:var(--muted);">
-        <span style="color:var(--success);">●</span> Binnen straal &nbsp;
-        <span style="color:var(--accent2);">●</span> Op route / verder
-      </span>
-      <span style="font-size:0.82rem;color:var(--muted);">${ledenMetAfstand.length} leden gevonden</span>
+    <div style="display:flex;gap:1rem;margin-bottom:0.75rem;flex-wrap:wrap;align-items:center;">
+      <span style="font-size:0.82rem;color:var(--muted);"><span style="color:#6dce9a;">●</span> Binnen straal &nbsp;<span style="color:#6d9de8;">●</span> Verder</span>
+      <span style="font-size:0.82rem;color:var(--muted);">${oudersMet.length} ouders gevonden</span>
     </div>
-    ${ledenMetAfstand.map(l => {
-      const status = verzoekenMap[l.id];
-      const inRadius = l.dist !== null && l.dist <= radius / 1000;
-      const distStr = l.dist !== null ? `${l.dist.toFixed(1)} km` : 'onbekend';
-
-      let actionBtn = '';
-      if (status === 'accepted') {
-        actionBtn = `<span class="badge badge-success">✓ Gematcht</span>`;
-      } else if (status === 'pending') {
-        actionBtn = `<span class="badge badge-blue">⏳ Wachten</span>`;
-      } else if (status === 'declined') {
-        actionBtn = `<span class="badge" style="background:rgba(232,109,109,0.1);color:var(--danger)">✗ Geweigerd</span>`;
-      } else {
-        actionBtn = `<button class="btn btn-secondary btn-sm" onclick="sendRequest('${l.id}', '${trainingId}')">Vraag aan 🚗</button>`;
-      }
-
+    ${oudersMet.map(o => {
+      const status = verzMap[o.id];
+      const inRadius = o.dist!==null&&o.dist<=radius/1000;
+      const distStr = o.dist!==null?`${o.dist.toFixed(1)} km`:'onbekend';
+      let btn = '';
+      if (status==='accepted') btn=`<span class="badge badge-success">✓ Gematcht</span>`;
+      else if (status==='pending') btn=`<span class="badge badge-blue">⏳ Wachten</span>`;
+      else if (status==='declined') btn=`<span class="badge badge-danger">✗ Geweigerd</span>`;
+      else btn=`<button class="btn btn-secondary btn-sm" onclick="sendRequest('${o.id}','${trainingId}')">Vraag aan 🚗</button>`;
       return `
         <div class="match-card">
-          <div class="match-avatar">${l.voornaam[0]}</div>
+          <div class="match-avatar">${o.voornaam[0]}</div>
           <div class="match-info">
-            <div class="match-name">${l.voornaam}</div>
-            <div class="match-meta">📍 ${l.gemeente} · ${distStr} ${inRadius ? '· <span style="color:var(--success)">in straal</span>' : ''}</div>
+            <div class="match-name">${o.voornaam}</div>
+            <div class="match-meta">📍 ${o.gemeente} · ${distStr}${inRadius?' · <span style="color:#6dce9a">in straal</span>':''}</div>
           </div>
-          <div class="match-actions">${actionBtn}</div>
-        </div>
-      `;
-    }).join('')}
-  `;
+          <div class="match-actions">${btn}</div>
+        </div>`;
+    }).join('')}`;
 }
 
 async function sendRequest(naarId, trainingId) {
-  const { error } = await sbClient.from('carpool_requests').insert({
-    van_id: currentProfile.id,
-    naar_id: naarId,
-    training_id: trainingId,
-    status: 'pending'
-  });
+  const { error } = await sbClient.from('carpool_requests').insert({van_id:currentProfile.id,naar_id:naarId,training_id:trainingId,status:'pending'});
   if (error) return showToast('❌ Verzoek kon niet verzonden worden.');
-  showToast('✅ Carpool-verzoek verzonden!');
-  loadMatches();
+  showToast('✅ Carpool-verzoek verzonden!'); loadMatches();
 }
 
 async function loadPendingRequests() {
-  const { data } = await sbClient
-    .from('carpool_requests')
+  const { data } = await sbClient.from('carpool_requests')
     .select('*, van:van_id(voornaam, gemeente, telefoon), trainingen(dag, start_tijd, zalen(naam))')
-    .eq('naar_id', currentProfile.id)
-    .eq('status', 'pending');
-
+    .eq('naar_id', currentProfile.id).eq('status','pending');
   const card = document.getElementById('pending-requests-card');
   const list = document.getElementById('pending-requests-list');
-  if (!data || data.length === 0) { if (card) card.style.display = 'none'; return; }
-
-  card.style.display = 'block';
-  list.innerHTML = data.map(r => `
+  if (!data||!data.length) { if(card) card.style.display='none'; return; }
+  card.style.display='block';
+  list.innerHTML = data.map(r=>`
     <div class="match-card">
-      <div class="match-avatar">${r.van?.voornaam?.[0] || '?'}</div>
+      <div class="match-avatar">${r.van?.voornaam?.[0]||'?'}</div>
       <div class="match-info">
         <div class="match-name">${r.van?.voornaam} · ${r.van?.gemeente}</div>
         <div class="match-meta">🗓 ${r.trainingen?.dag} ${r.trainingen?.start_tijd} · ${r.trainingen?.zalen?.naam}</div>
       </div>
       <div class="match-actions">
-        <button class="btn btn-success btn-sm" onclick="respondRequest('${r.id}', 'accepted', '${r.van?.telefoon||''}')">✓</button>
-        <button class="btn btn-danger btn-sm" onclick="respondRequest('${r.id}', 'declined', '')">✗</button>
+        <button class="btn btn-success btn-sm" onclick="respondRequest('${r.id}','accepted','${r.van?.telefoon||''}')">✓</button>
+        <button class="btn btn-danger btn-sm" onclick="respondRequest('${r.id}','declined','')">✗</button>
       </div>
-    </div>
-  `).join('');
+    </div>`).join('');
 }
 
 async function respondRequest(requestId, status, telefoon) {
-  await sbClient.from('carpool_requests')
-    .update({ status, updated_at: new Date().toISOString() })
-    .eq('id', requestId);
-
-  if (status === 'accepted' && telefoon) {
-    showToast(`✅ Geaccepteerd! Telefoonnummer: ${telefoon}`);
-  } else {
-    showToast(status === 'accepted' ? '✅ Verzoek geaccepteerd' : 'Verzoek geweigerd');
-  }
+  await sbClient.from('carpool_requests').update({status,updated_at:new Date().toISOString()}).eq('id',requestId);
+  if (status==='accepted'&&telefoon) showToast(`✅ Geaccepteerd! Tel: ${telefoon}`);
+  else showToast(status==='accepted'?'✅ Verzoek geaccepteerd':'Verzoek geweigerd');
   await loadPendingRequests();
 }
 
-// ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════
 //  PROFIEL VIEW
-// ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════
 function renderProfiel() {
   if (!currentProfile) return;
   const p = currentProfile;
@@ -1147,69 +709,80 @@ function renderProfiel() {
       <div class="card-title">📋 Mijn gegevens</div>
       <div style="display:grid;gap:0.6rem;">
         <div><span style="color:var(--muted);font-size:0.82rem;">Naam</span><div>${p.voornaam} ${p.achternaam}</div></div>
-        <div><span style="color:var(--muted);font-size:0.82rem;">Adres</span><div>${p.straat}${p.huisnummer?' '+p.huisnummer:''}, ${p.postcode} ${p.gemeente}</div></div>
-        <div><span style="color:var(--muted);font-size:0.82rem;">Groep</span><div><span class="badge badge-accent">${p.groepen?.naam || '?'}</span></div></div>
-        <div><span style="color:var(--muted);font-size:0.82rem;">Locatie op kaart</span><div>${p.lat ? `✅ ${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}` : '⚠️ Niet geocodeerd'}</div></div>
+        <div><span style="color:var(--muted);font-size:0.82rem;">Adres</span><div>${p.straat||''}${p.huisnummer?' '+p.huisnummer:''}, ${p.postcode||''} ${p.gemeente}</div></div>
+        <div><span style="color:var(--muted);font-size:0.82rem;">Locatie</span><div>${p.lat?'✅ Geocodeerd':'⚠️ Niet geocodeerd — adres controleren'}</div></div>
       </div>
     </div>
 
     <div class="card">
+      <div class="card-title">👶 Mijn kinderen</div>
+      ${currentKinderen.length===0
+        ? '<div class="alert alert-warn">Nog geen kinderen toegevoegd. Voeg je kind(eren) toe om trainingen en matches te zien.</div>'
+        : currentKinderen.map(k=>`
+          <div class="kind-card">
+            <div>
+              <div class="kind-label">${k.label}</div>
+              <div class="kind-groep">Groep: <span class="badge badge-accent">${k.groepen?.naam||'?'}</span></div>
+            </div>
+            <div style="display:flex;gap:0.5rem;">
+              <button class="btn btn-secondary btn-sm" onclick="openKindModal('${k.id}')">✏️</button>
+              <button class="btn btn-danger btn-sm" onclick="deleteKind('${k.id}')">🗑</button>
+            </div>
+          </div>`).join('')
+      }
+      <button class="btn btn-secondary btn-full" style="margin-top:0.75rem;" onclick="openKindModal()">➕ Kind toevoegen</button>
+    </div>
+
+    <div class="card">
       <div class="card-title">🚗 Carpool instellingen</div>
-      <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;">
-        <label style="margin:0;">Beschikbaar als rijdgenoot</label>
-        <input type="checkbox" id="carpool-toggle" ${p.carpool_actief ? 'checked' : ''} onchange="toggleCarpool(this.checked)" style="width:auto;cursor:pointer;transform:scale(1.4);">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <label style="margin:0;color:var(--text);">Beschikbaar als rijdgenoot</label>
+        <input type="checkbox" id="carpool-toggle" ${p.carpool_actief?'checked':''} onchange="toggleCarpool(this.checked)" style="width:auto;cursor:pointer;transform:scale(1.4);">
       </div>
     </div>
 
     <button class="btn btn-secondary btn-full" onclick="logout()" style="margin-top:0.5rem;">Uitloggen</button>
-    <button class="btn btn-secondary btn-sm" onclick="document.getElementById('config-screen').classList.add('visible')" style="margin-top:0.5rem;color:var(--muted);">⚙️ Supabase instellingen</button>
-  `;
+    <button class="btn btn-ghost btn-full" onclick="document.getElementById('config-screen').classList.add('visible')" style="margin-top:0.25rem;">⚙️ Supabase instellingen</button>`;
 }
 
 async function toggleCarpool(actief) {
-  await sbClient.from('profiles').update({ carpool_actief: actief }).eq('id', currentProfile.id);
-  currentProfile.carpool_actief = actief;
-  showToast(actief ? '✅ Je bent nu beschikbaar als rijdgenoot' : 'Je staat nu als niet-beschikbaar');
+  await sbClient.from('profiles').update({carpool_actief:actief}).eq('id',currentProfile.id);
+  currentProfile.carpool_actief=actief;
+  showToast(actief?'✅ Beschikbaar als rijdgenoot':'Niet meer beschikbaar');
 }
 
-// ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════
 //  ADMIN VIEW
-// ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════
 function buildAdminView() {
   return `
     <h2 style="margin-bottom:1.5rem;color:var(--accent);">⚙️ Admin</h2>
     <div class="tabs">
-      <button class="tab active" onclick="switchAdminTab('codes', this)">Codes</button>
-      <button class="tab" onclick="switchAdminTab('groepen', this)">Groepen</button>
-      <button class="tab" onclick="switchAdminTab('zalen', this)">Zalen</button>
-      <button class="tab" onclick="switchAdminTab('trainingen', this)">Trainingen</button>
+      <button class="tab active" onclick="switchAdminTab('codes',this)">Codes</button>
+      <button class="tab" onclick="switchAdminTab('groepen',this)">Groepen</button>
+      <button class="tab" onclick="switchAdminTab('zalen',this)">Zalen</button>
+      <button class="tab" onclick="switchAdminTab('trainingen',this)">Trainingen</button>
     </div>
-
     <div id="admin-tab-codes" class="tab-content active">
       <div class="card">
         <div class="card-title">🔑 Nieuwe uitnodigingscode</div>
         <div class="grid-2">
           <div class="form-group"><label>Code</label><input type="text" id="new-code" placeholder="GYMCLUB-2025" style="text-transform:uppercase"></div>
-          <div class="form-group"><label>Max gebruik</label><input type="number" id="new-code-max" value="20"></div>
+          <div class="form-group"><label>Max gebruik</label><input type="number" id="new-code-max" value="50"></div>
         </div>
         <div class="form-group"><label>Vervaldatum (optioneel)</label><input type="date" id="new-code-exp"></div>
         <button class="btn btn-primary" onclick="createCode()">Code aanmaken</button>
       </div>
-      <div class="card">
-        <div class="card-title">📋 Bestaande codes</div>
-        <div id="codes-list">Laden...</div>
-      </div>
+      <div class="card"><div class="card-title">📋 Bestaande codes</div><div id="codes-list">Laden...</div></div>
     </div>
-
     <div id="admin-tab-groepen" class="tab-content">
       <div class="card">
         <div class="card-title">➕ Nieuwe groep</div>
-        <div class="form-group"><label>Naam</label><input type="text" id="new-groep-naam" placeholder="G1, A2, ..."></div>
+        <div class="form-group"><label>Naam</label><input type="text" id="new-groep-naam" placeholder="G1, A2, C16+..."></div>
         <button class="btn btn-primary" onclick="createGroep()">Aanmaken</button>
       </div>
       <div class="card"><div class="card-title">Groepen</div><div id="groepen-admin-list">Laden...</div></div>
     </div>
-
     <div id="admin-tab-zalen" class="tab-content">
       <div class="card">
         <div class="card-title">➕ Nieuwe zaal</div>
@@ -1219,7 +792,6 @@ function buildAdminView() {
       </div>
       <div class="card"><div class="card-title">Zalen</div><div id="zalen-admin-list">Laden...</div></div>
     </div>
-
     <div id="admin-tab-trainingen" class="tab-content">
       <div class="card">
         <div class="card-title">➕ Nieuw trainingsslot</div>
@@ -1229,7 +801,7 @@ function buildAdminView() {
         </div>
         <div class="form-group"><label>Dag</label>
           <select id="new-training-dag">
-            ${DAGEN.map(d => `<option value="${d}">${d.charAt(0).toUpperCase()+d.slice(1)}</option>`).join('')}
+            ${DAGEN.map(d=>`<option value="${d}">${d.charAt(0).toUpperCase()+d.slice(1)}</option>`).join('')}
           </select>
         </div>
         <div class="grid-2">
@@ -1239,197 +811,130 @@ function buildAdminView() {
         <button class="btn btn-primary" onclick="createTraining()">Aanmaken</button>
       </div>
       <div class="card"><div class="card-title">Trainingen</div><div id="trainingen-admin-list">Laden...</div></div>
-    </div>
-  `;
+    </div>`;
 }
 
 function switchAdminTab(name, el) {
-  document.querySelectorAll('[id^="admin-tab-"]').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('#view-admin .tab').forEach(t => t.classList.remove('active'));
-  document.getElementById('admin-tab-' + name).classList.add('active');
-  if (el) el.classList.add('active');
+  document.querySelectorAll('[id^="admin-tab-"]').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('#view-admin .tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('admin-tab-'+name).classList.add('active');
+  if(el) el.classList.add('active');
   loadAdminData(name);
 }
 
 async function loadAdminData(tab) {
-  if (tab === 'codes') {
-    const { data } = await sbClient.from('invite_codes').select('*').order('created_at', { ascending: false });
-    const el = document.getElementById('codes-list');
-    if (!el) return;
-    el.innerHTML = data?.length ? `
-      <table class="admin-table">
-        <thead><tr><th>Code</th><th>Gebruik</th><th>Vervalt</th></tr></thead>
-        <tbody>${data.map(c => `
-          <tr>
-            <td><code style="color:var(--accent)">${c.code}</code></td>
-            <td>${c.used_count}/${c.max_uses}</td>
-            <td>${c.expires_at ? new Date(c.expires_at).toLocaleDateString('nl-BE') : '—'}</td>
-          </tr>
-        `).join('')}</tbody>
-      </table>
-    ` : '<div style="color:var(--muted);">Nog geen codes.</div>';
+  if (tab==='codes') {
+    const { data } = await sbClient.from('invite_codes').select('*').order('created_at',{ascending:false});
+    const el = document.getElementById('codes-list'); if(!el) return;
+    el.innerHTML = data?.length ? `<table class="admin-table"><thead><tr><th>Code</th><th>Gebruik</th><th>Vervalt</th></tr></thead><tbody>
+      ${data.map(c=>`<tr><td><code style="color:var(--accent)">${c.code}</code></td><td>${c.used_count}/${c.max_uses}</td><td>${c.expires_at?new Date(c.expires_at).toLocaleDateString('nl-BE'):'—'}</td></tr>`).join('')}
+      </tbody></table>` : '<div style="color:var(--muted);">Nog geen codes.</div>';
   }
-
-  if (tab === 'groepen') {
+  if (tab==='groepen') {
     const { data } = await sbClient.from('groepen').select('*').order('naam');
-    const el = document.getElementById('groepen-admin-list');
-    if (!el) return;
-    el.innerHTML = data?.map(g => `<div class="slot"><span>${g.naam}</span></div>`).join('') || 'Geen groepen.';
-
+    const el = document.getElementById('groepen-admin-list'); if(!el) return;
+    el.innerHTML = data?.map(g=>`<div class="slot"><span>${g.naam}</span><button class="btn btn-danger btn-sm" onclick="deleteGroep('${g.id}')">✕</button></div>`).join('')||'Geen groepen.';
     const sel = document.getElementById('new-training-groep');
-    if (sel && data) sel.innerHTML = data.map(g => `<option value="${g.id}">${g.naam}</option>`).join('');
+    if(sel&&data) sel.innerHTML=data.map(g=>`<option value="${g.id}">${g.naam}</option>`).join('');
   }
-
-  if (tab === 'zalen') {
+  if (tab==='zalen') {
     const { data } = await sbClient.from('zalen').select('*').order('naam');
-    const el = document.getElementById('zalen-admin-list');
-    if (!el) return;
-    el.innerHTML = data?.map(z => `<div class="slot"><span>${z.naam}</span><span style="color:var(--muted);font-size:0.82rem;">${z.adres||''}</span></div>`).join('') || 'Geen zalen.';
-
+    const el = document.getElementById('zalen-admin-list'); if(!el) return;
+    el.innerHTML = data?.map(z=>`<div class="slot"><span>${z.naam}</span><span style="color:var(--muted);font-size:0.82rem;">${z.adres||''}</span></div>`).join('')||'Geen zalen.';
     const sel = document.getElementById('new-training-zaal');
-    if (sel && data) sel.innerHTML = data.map(z => `<option value="${z.id}">${z.naam}</option>`).join('');
+    if(sel&&data) sel.innerHTML=data.map(z=>`<option value="${z.id}">${z.naam}</option>`).join('');
   }
-
-  if (tab === 'trainingen') {
-    const { data } = await sbClient
-      .from('trainingen')
-      .select('*, groepen(naam), zalen(naam)')
-      .eq('active', true)
-      .order('dag');
-    const el = document.getElementById('trainingen-admin-list');
-    if (!el) return;
-    el.innerHTML = data?.length ? `
-      <table class="admin-table">
-        <thead><tr><th>Dag</th><th>Tijd</th><th>Zaal</th><th>Groep</th><th></th></tr></thead>
-        <tbody>${data.map(t => `
-          <tr>
-            <td>${t.dag}</td>
-            <td>${t.start_tijd}–${t.eind_tijd}</td>
-            <td>${t.zalen?.naam||'?'}</td>
-            <td>${t.groepen?.naam||'?'}</td>
-            <td><button class="btn btn-danger btn-sm" onclick="deleteTraining('${t.id}')">✕</button></td>
-          </tr>
-        `).join('')}</tbody>
-      </table>
-    ` : '<div style="color:var(--muted);">Nog geen trainingen.</div>';
-    // Laad ook groepen en zalen voor de form
-    loadAdminData('groepen');
-    loadAdminData('zalen');
+  if (tab==='trainingen') {
+    const { data } = await sbClient.from('trainingen').select('*, groepen(naam), zalen(naam)').eq('active',true).order('dag');
+    const el = document.getElementById('trainingen-admin-list'); if(!el) return;
+    el.innerHTML = data?.length ? `<table class="admin-table"><thead><tr><th>Dag</th><th>Tijd</th><th>Zaal</th><th>Groep</th><th></th></tr></thead><tbody>
+      ${data.map(t=>`<tr><td>${t.dag}</td><td>${t.start_tijd}–${t.eind_tijd}</td><td>${t.zalen?.naam||'?'}</td><td>${t.groepen?.naam||'?'}</td><td><button class="btn btn-danger btn-sm" onclick="deleteTraining('${t.id}')">✕</button></td></tr>`).join('')}
+      </tbody></table>` : '<div style="color:var(--muted);">Nog geen trainingen.</div>';
+    loadAdminData('groepen'); loadAdminData('zalen');
   }
 }
 
 async function createCode() {
   const code = document.getElementById('new-code').value.trim().toUpperCase();
-  const max = parseInt(document.getElementById('new-code-max').value) || 20;
+  const max = parseInt(document.getElementById('new-code-max').value)||50;
   const exp = document.getElementById('new-code-exp').value;
-  if (!code) return showToast('Vul een code in');
-  const { error } = await sbClient.from('invite_codes').insert({
-    code,
-    max_uses: max,
-    created_by: currentUser.id,
-    expires_at: exp || null
-  });
-  if (error) return showToast('❌ ' + error.message);
-  showToast('✅ Code aangemaakt');
-  document.getElementById('new-code').value = '';
-  loadAdminData('codes');
+  if(!code) return showToast('Vul een code in');
+  const { error } = await sbClient.from('invite_codes').insert({code,max_uses:max,expires_at:exp||null});
+  if(error) return showToast('❌ '+error.message);
+  showToast('✅ Code aangemaakt'); document.getElementById('new-code').value=''; loadAdminData('codes');
 }
-
 async function createGroep() {
   const naam = document.getElementById('new-groep-naam').value.trim();
-  if (!naam) return showToast('Vul een naam in');
-  const { error } = await sbClient.from('groepen').insert({ naam });
-  if (error) return showToast('❌ ' + error.message);
-  showToast('✅ Groep aangemaakt');
-  document.getElementById('new-groep-naam').value = '';
-  loadAdminData('groepen');
+  if(!naam) return showToast('Vul een naam in');
+  const { error } = await sbClient.from('groepen').insert({naam});
+  if(error) return showToast('❌ '+error.message);
+  showToast('✅ Groep aangemaakt'); document.getElementById('new-groep-naam').value=''; loadAdminData('groepen');
 }
-
+async function deleteGroep(id) {
+  if(!confirm('Groep verwijderen? Dit verwijdert ook alle gekoppelde trainingen.')) return;
+  await sbClient.from('groepen').delete().eq('id',id); showToast('Groep verwijderd'); loadAdminData('groepen');
+}
 async function createZaal() {
   const naam = document.getElementById('new-zaal-naam').value.trim();
   const adres = document.getElementById('new-zaal-adres').value.trim();
-  if (!naam) return showToast('Vul een naam in');
-
-  let lat = null, lng = null;
-  if (adres) {
+  if(!naam) return showToast('Vul een naam in');
+  let lat=null,lng=null;
+  if(adres) {
     try {
-      const geo = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(adres + ', Belgium')}&limit=1`);
-      const geoData = await geo.json();
-      if (geoData.length > 0) { lat = parseFloat(geoData[0].lat); lng = parseFloat(geoData[0].lon); }
-    } catch(e) {}
+      const geo = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(adres+', Belgium')}&limit=1`);
+      const gd = await geo.json();
+      if(gd.length>0){lat=parseFloat(gd[0].lat);lng=parseFloat(gd[0].lon);}
+    } catch(e){}
   }
-
-  const { error } = await sbClient.from('zalen').insert({ naam, adres, lat, lng });
-  if (error) return showToast('❌ ' + error.message);
-  showToast('✅ Zaal aangemaakt');
-  document.getElementById('new-zaal-naam').value = '';
-  document.getElementById('new-zaal-adres').value = '';
-  loadAdminData('zalen');
+  const { error } = await sbClient.from('zalen').insert({naam,adres,lat,lng});
+  if(error) return showToast('❌ '+error.message);
+  showToast('✅ Zaal aangemaakt'); document.getElementById('new-zaal-naam').value=''; document.getElementById('new-zaal-adres').value=''; loadAdminData('zalen');
 }
-
 async function createTraining() {
-  const groep_id = document.getElementById('new-training-groep').value;
-  const zaal_id = document.getElementById('new-training-zaal').value;
-  const dag = document.getElementById('new-training-dag').value;
-  const start_tijd = document.getElementById('new-training-start').value;
-  const eind_tijd = document.getElementById('new-training-eind').value;
-
-  const { error } = await sbClient.from('trainingen').insert({ groep_id, zaal_id, dag, start_tijd, eind_tijd });
-  if (error) return showToast('❌ ' + error.message);
-  showToast('✅ Training aangemaakt');
-  loadAdminData('trainingen');
+  const groep_id=document.getElementById('new-training-groep').value;
+  const zaal_id=document.getElementById('new-training-zaal').value;
+  const dag=document.getElementById('new-training-dag').value;
+  const start_tijd=document.getElementById('new-training-start').value;
+  const eind_tijd=document.getElementById('new-training-eind').value;
+  const { error } = await sbClient.from('trainingen').insert({groep_id,zaal_id,dag,start_tijd,eind_tijd});
+  if(error) return showToast('❌ '+error.message);
+  showToast('✅ Training aangemaakt'); loadAdminData('trainingen');
 }
-
 async function deleteTraining(id) {
-  await sbClient.from('trainingen').update({ active: false }).eq('id', id);
-  showToast('Training verwijderd');
-  loadAdminData('trainingen');
+  await sbClient.from('trainingen').update({active:false}).eq('id',id); showToast('Training verwijderd'); loadAdminData('trainingen');
 }
 
-// ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════
 //  NAVIGATIE
-// ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════
 function showView(name) {
-  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
-
-  const view = document.getElementById('view-' + name);
-  if (view) view.classList.add('active');
-
-  const btns = document.querySelectorAll('nav button');
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+  const view = document.getElementById('view-'+name);
+  if(view) view.classList.add('active');
   const idx = ['home','trainingen','matches','profiel','admin'].indexOf(name);
-  if (idx >= 0 && btns[idx]) btns[idx].classList.add('active');
-
-  if (name === 'matches') {
-    setTimeout(() => { if (mapInstance) mapInstance.invalidateSize(); }, 100);
-  }
-  if (name === 'profiel') renderProfiel();
-  if (name === 'admin') { switchAdminTab('codes', null); }
+  const btns = document.querySelectorAll('nav button');
+  if(idx>=0&&btns[idx]) btns[idx].classList.add('active');
+  if(name==='matches') setTimeout(()=>{ if(mapInstance) mapInstance.invalidateSize(); },100);
+  if(name==='profiel') renderProfiel();
+  if(name==='admin') switchAdminTab('codes',null);
 }
 
-// ═══════════════════════════════════════════════════
-//  UTILITIES
-// ═══════════════════════════════════════════════════
-function haversine(lat1, lon1, lat2, lon2) {
-  const R = 6371;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLon/2)**2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+// ═══════════════════════════════════════
+//  UTILS
+// ═══════════════════════════════════════
+function haversine(lat1,lon1,lat2,lon2) {
+  const R=6371, dLat=(lat2-lat1)*Math.PI/180, dLon=(lon2-lon1)*Math.PI/180;
+  const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
 }
-
-let toastTimer = null;
+let toastTimer=null;
 function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  if (toastTimer) clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove('show'), 3500);
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  if(toastTimer) clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove('show'),3500);
 }
 
-// ═══════════════════════════════════════════════════
-//  START
-// ═══════════════════════════════════════════════════
 init();
 </script>
 </body>
