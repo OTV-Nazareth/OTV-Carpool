@@ -916,10 +916,12 @@ async function loadMatches(listId,sliderId,map,markers,circle,setCircle){
     return Math.abs((ph*60+pm)-trainMinuten)<=30;
   });
   const groepIds=[...new Set((par||[]).map(t=>t.groep_id))];
-  const{data:ak}=await sbClient.from('kinderen').select('ouder_id,groep_id').in('groep_id',groepIds).neq('ouder_id',currentUser.id);
-  const ouderIds=[...new Set((ak||[]).map(k=>k.ouder_id))];
   markers.forEach(m=>m.remove());markers.length=0;
   if(circle){circle.remove();}
+  // Supabase crasht op lege .in() array — vroeg afkappen
+  if(!groepIds.length){list.innerHTML='<div class="alert a-info">Geen trainingen gevonden binnen ± 30 min.</div>';return;}
+  const{data:ak}=await sbClient.from('kinderen').select('ouder_id,groep_id').in('groep_id',groepIds).neq('ouder_id',currentUser.id);
+  const ouderIds=[...new Set((ak||[]).map(k=>k.ouder_id))];
   if(!ouderIds.length){list.innerHTML='<div class="alert a-info">Geen andere ouders gevonden voor dit moment.</div>';return;}
   const{data:ouders}=await sbClient.from('profiles').select('id,voornaam,gemeente,lat,lng,carpool_actief').in('id',ouderIds).eq('carpool_actief',true);
   if(!ouders?.length){list.innerHTML='<div class="alert a-info">Geen beschikbare rijdgenoten.</div>';return;}
