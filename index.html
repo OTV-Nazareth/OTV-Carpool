@@ -1386,30 +1386,34 @@ Zalen blijven altijd bewaard.`)) return;
   try {
     showToast('Bezig met verwijderen...');
 
-    // 1. Haal alle trainingen van dit seizoen op
-    // Seizoen heeft geen directe link naar trainingen — trainingen hebben geen seizoen_id
-    // We verwijderen alle inactive trainingen die groepen gebruiken die alleen in dit seizoen voorkwamen
-    // Simpeler: verwijder alle trainingen die 'active=false' zijn (gearchiveerd door deze import)
-    // EN vraag bevestiging welke groepen verwijderd mogen worden
+    // 1. Haal inactieve trainingen op
+    const{data:inactieveT}=await sbClient.from('trainingen').select('id,groep_id').eq('active',false);
+    const inactiefIds=(inactieveT||[]).map(t=>t.id);
 
-    // Haal groepen op die GEEN actieve trainingen hebben
+    if(inactiefIds.length){
+      // Verwijder eerst carpool_requests die naar deze trainingen verwijzen
+      // (in batches van 20 want Supabase .in() heeft limiet)
+      for(let i=0;i<inactiefIds.length;i+=20){
+        const batch=inactiefIds.slice(i,i+20);
+        await sbClient.from('carpool_requests').delete().in('training_id',batch);
+      }
+      // Nu pas trainingen verwijderen
+      const{error:tErr}=await sbClient.from('trainingen').delete().eq('active',false);
+      if(tErr) throw new Error('Trainingen: '+tErr.message);
+    }
+
+    // Haal groepen op die GEEN actieve trainingen meer hebben
     const{data:alleGroepen}=await sbClient.from('groepen').select('id,naam');
     const{data:actieveT}=await sbClient.from('trainingen').select('groep_id').eq('active',true);
     const actieveGroepIds=new Set((actieveT||[]).map(t=>t.groep_id));
-
-    // Groepen zonder actieve trainingen = veilig te verwijderen
     const legeGroepen=(alleGroepen||[]).filter(g=>!actieveGroepIds.has(g.id));
-
-    // Verwijder inactieve trainingen
-    const{error:tErr}=await sbClient.from('trainingen').delete().eq('active',false);
-    if(tErr) throw new Error('Trainingen: '+tErr.message);
 
     // Verwijder lege groepen
     for(const g of legeGroepen){
       await sbClient.from('groepen').delete().eq('id',g.id);
     }
 
-    showToast(`✅ Opgeruimd: inactieve trainingen + ${legeGroepen.length} ongebruikte groepen verwijderd`);
+    showToast(`✅ Opgeruimd: ${inactiefIds.length} trainingen + ${legeGroepen.length} ongebruikte groepen verwijderd`);
     loadAdminSection('seizoen');
     loadAdminSection('groepen');
     loadAdminSection('trainingen');
