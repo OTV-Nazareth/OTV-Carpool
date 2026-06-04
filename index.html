@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#0f172a">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>RijdMee · Gymclub Nazareth</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -292,7 +293,7 @@ input[type=file]{background:none;border:1px dashed var(--border);color:var(--mut
   </div>
   <div id="desk-tabs" style="display:flex;border-bottom:1px solid var(--border);flex-shrink:0">
     <button class="desk-tab active" onclick="switchDeskTab('matches')" id="desk-tab-matches" style="flex:1;padding:10px 6px;background:none;border:none;color:var(--muted);font-family:var(--font);font-size:0.78rem;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;transition:all 0.2s;letter-spacing:0.03em">🚗 Rijdgenoten</button>
-    <button class="desk-tab" onclick="switchDeskTab('home')" id="desk-tab-home" style="flex:1;padding:10px 6px;background:none;border:none;color:var(--muted);font-family:var(--font);font-size:0.78rem;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;transition:all 0.2s;letter-spacing:0.03em">🏠 Home</button>
+    <button class="desk-tab" onclick="switchDeskTab('home')" id="desk-tab-home" style="flex:1;padding:10px 6px;background:none;border:none;color:var(--muted);font-family:var(--font);font-size:0.78rem;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;transition:all 0.2s;letter-spacing:0.03em">📅 Overzicht</button>
     <button class="desk-tab" onclick="switchDeskTab('admin')" id="desk-tab-admin" style="display:none;flex:1;padding:10px 6px;background:none;border:none;color:var(--muted);font-family:var(--font);font-size:0.78rem;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;transition:all 0.2s;letter-spacing:0.03em">⚙️ Admin</button>
   </div>
   <div id="desk-body">
@@ -318,16 +319,9 @@ input[type=file]{background:none;border:1px dashed var(--border);color:var(--mut
         <div id="desk-matches-list"><div style="color:var(--muted);font-size:0.85rem">Kies een training.</div></div>
       </div>
     </div>
-    <!-- TAB: HOME -->
+    <!-- TAB: HOME = Overzicht per training -->
     <div id="desk-tab-content-home" style="display:none">
-      <div id="desk-mijn-matches-card" style="display:none;margin-bottom:14px">
-        <div class="sec"><div class="sec-title">✅ Mijn matches</div></div>
-        <div id="desk-mijn-matches-list"></div>
-      </div>
-      <div id="desk-next-training-card" style="display:none">
-        <div class="sec"><div class="sec-title">📅 Volgende training</div></div>
-        <div class="card"><div id="desk-next-training-widget"></div></div>
-      </div>
+      <div id="desk-overzicht-list"><div style="color:var(--muted);font-size:0.85rem">Laden...</div></div>
     </div>
     <!-- TAB: ADMIN -->
     <div id="desk-tab-content-admin" style="display:none">
@@ -374,18 +368,11 @@ input[type=file]{background:none;border:1px dashed var(--border);color:var(--mut
       </div>
     </div>
     <div id="geen-kinderen-alert" style="display:none"><div class="alert a-warn">👶 Voeg eerst een kind toe via je profiel.</div></div>
-    <div id="mijn-matches-card" style="display:none">
-      <div class="sec"><div class="sec-title">✅ Mijn matches</div></div>
-      <div class="card"><div id="mijn-matches-list"></div></div>
-    </div>
-    <div id="pending-requests-card" style="display:none">
-      <div class="sec"><div class="sec-title">🔔 Verzoeken</div></div>
-      <div class="card"><div id="pending-requests-list"></div></div>
-    </div>
-    <div id="next-training-card" style="display:none">
-      <div class="sec"><div class="sec-title">📅 Volgende training</div></div>
-      <div class="card"><div id="next-training-widget"></div></div>
-    </div>
+    <div id="mob-overzicht-list"><div style="color:var(--muted);font-size:0.85rem">Laden...</div></div>
+    <!-- bewaard voor loadPendingRequests compatibiliteit -->
+    <div id="mijn-matches-card" style="display:none"><div id="mijn-matches-list"></div></div>
+    <div id="pending-requests-card" style="display:none"><div id="pending-requests-list"></div></div>
+    <div id="next-training-card" style="display:none"><div id="next-training-widget"></div></div>
   </div>
 </div>
 
@@ -703,6 +690,7 @@ async function loadTrainingen(){
   renderChips('mob-training-chips');
   renderChips('desk-training-chips');
   renderTrainingenList();
+  await loadOverzicht();
 }
 function renderChips(containerId){
   const el=document.getElementById(containerId);if(!el||!userTrainingen.length)return;
@@ -755,6 +743,99 @@ async function loadNextTraining(){
   </div>`;
   if(w)w.innerHTML=ntwHtml;
   if(dw){dw.innerHTML=ntwHtml;if(dcard2)dcard2.style.display='block';}
+}
+
+// ── OVERZICHT (home tab: trainingen + matches per dag) ──
+async function loadOverzicht(){
+  if(!currentKinderen.length||!userTrainingen.length) return;
+
+  // Haal alle matches op in één keer
+  const{data:sentReqs}=await sbClient.from('carpool_requests')
+    .select('naar_id,training_id,status,bericht, naar:naar_id(voornaam,gemeente,telefoon)')
+    .eq('van_id',currentProfile.id).in('status',['accepted','pending']);
+  const{data:recvReqs}=await sbClient.from('carpool_requests')
+    .select('van_id,training_id,status,bericht, van:van_id(voornaam,gemeente,telefoon)')
+    .eq('naar_id',currentProfile.id).in('status',['accepted','pending']);
+
+  const dagOrder=['maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag','zondag'];
+  const gesorteerd=[...userTrainingen].sort((a,b)=>dagOrder.indexOf(a.dag)-dagOrder.indexOf(b.dag));
+
+  const now=new Date();
+  const dagNr={'maandag':1,'dinsdag':2,'woensdag':3,'donderdag':4,'vrijdag':5,'zaterdag':6,'zondag':0};
+
+  const html=gesorteerd.map(t=>{
+    const k=currentKinderen.find(k=>k.groep_id===t.groep_id);
+    const kindLbl=k?.label||t.groepen?.naam||'?';
+
+    // Matches voor deze training
+    const mijnSent=(sentReqs||[]).filter(r=>r.training_id===t.id);
+    const mijnRecv=(recvReqs||[]).filter(r=>r.training_id===t.id);
+    const geaccepteerd=[
+      ...mijnSent.filter(r=>r.status==='accepted').map(r=>({naam:r.naar?.voornaam,gemeente:r.naar?.gemeente,tel:r.naar?.telefoon})),
+      ...mijnRecv.filter(r=>r.status==='accepted').map(r=>({naam:r.van?.voornaam,gemeente:r.van?.gemeente,tel:r.van?.telefoon}))
+    ];
+    const wachtend=[
+      ...mijnSent.filter(r=>r.status==='pending').map(r=>({naam:r.naar?.voornaam,richting:'uitgestuurd'})),
+      ...mijnRecv.filter(r=>r.status==='pending').map(r=>({naam:r.van?.voornaam,richting:'ontvangen'}))
+    ];
+
+    // Is dit de volgende training?
+    const tDag=dagNr[t.dag];
+    const [th,tm]=t.start_tijd.split(':').map(Number);
+    const diff=((tDag-now.getDay())+7)%7;
+    const isVandaag=diff===0;
+    const isVolgend=diff<3;
+
+    return`<div style="margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <div style="font-size:0.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em">${t.dag}</div>
+        <div style="font-size:0.88rem;font-weight:700;color:var(--blue)">${t.start_tijd}–${t.eind_tijd}</div>
+        <span class="badge b-red" style="font-size:0.68rem">${kindLbl}</span>
+        <div style="font-size:0.72rem;color:var(--muted)">${t.zalen?.naam||'?'}</div>
+        ${isVandaag?'<span class="badge" style="background:rgba(233,69,96,0.15);color:var(--accent)">Vanavond</span>':isVolgend?'<span class="badge b-muted">Binnenkort</span>':''}
+      </div>
+      ${geaccepteerd.length?geaccepteerd.map(m=>`
+        <div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:10px;margin-bottom:5px">
+          <span style="font-size:1rem">🚗</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:0.85rem;font-weight:600">${m.naam} <span style="color:var(--muted);font-weight:400">· ${m.gemeente}</span></div>
+            ${m.tel?`<button class="btn-copy" style="margin-top:3px" onclick="kopieerTel('${m.tel}')">📋 ${m.tel}</button>`:'<div style="color:var(--faint);font-size:0.75rem">Geen telefoonnummer</div>'}
+          </div>
+          <button onclick="openTerugritModal('${t.id}')" style="background:none;border:none;color:var(--faint);font-size:0.75rem;cursor:pointer;font-family:var(--font)">↩️ Terugrit</button>
+        </div>`).join(''):''}
+      ${wachtend.length?wachtend.map(w=>`
+        <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:rgba(76,201,240,0.06);border:1px solid rgba(76,201,240,0.15);border-radius:10px;margin-bottom:5px">
+          <span style="font-size:1rem">👤</span>
+          <div style="flex:1;font-size:0.82rem;color:var(--muted)">${w.naam} — ${w.richting==='ontvangen'?'<span style="color:var(--gold)">⏳ wil meerijden</span>':'<span style="color:var(--blue)">⏳ verzoek uitgestuurd</span>'}</div>
+          ${w.richting==='ontvangen'?`<div style="display:flex;gap:4px">
+            <button class="btn btn-success btn-sm" style="padding:3px 8px" onclick="accepteerVanuitOverzicht('${t.id}','${w.naam}')">✓</button>
+            <button class="btn btn-danger btn-sm" style="padding:3px 8px" onclick="afwijzenVanuitOverzicht('${t.id}','${w.naam}')">✗</button>
+          </div>`:''}
+        </div>`).join(''):''}
+      ${!geaccepteerd.length&&!wachtend.length?`
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:var(--surface2);border-radius:10px">
+          <span style="font-size:0.8rem;color:var(--faint)">Nog geen rijdgenoot</span>
+          <button class="btn btn-primary btn-sm" onclick="${!isDesktop()?"setScreen('matches');selectChip('"+t.id+"','mob-training-chips')":`switchDeskTab('matches');selectChip('${t.id}','desk-training-chips')`}">🚗 Zoek</button>
+        </div>`:''}
+    </div>`;
+  }).join('');
+
+  // Vul beide containers
+  const mob=document.getElementById('mob-overzicht-list');
+  const desk=document.getElementById('desk-overzicht-list');
+  if(mob)mob.innerHTML=html;
+  if(desk)desk.innerHTML=html;
+}
+
+// Helper: accepteer vanuit overzicht (lookup request id)
+async function accepteerVanuitOverzicht(trainingId,naam){
+  const{data}=await sbClient.from('carpool_requests').select('id,van:van_id(voornaam,telefoon)').eq('naar_id',currentProfile.id).eq('training_id',trainingId).eq('status','pending');
+  const r=data?.find(r=>r.van?.voornaam===naam);
+  if(r)respondRequest(r.id,'accepted',r.van?.telefoon||'');
+}
+async function afwijzenVanuitOverzicht(trainingId,naam){
+  const{data}=await sbClient.from('carpool_requests').select('id').eq('naar_id',currentProfile.id).eq('training_id',trainingId).eq('status','pending');
+  const r=data?.[0];if(r)openAfwijzenModal(r.id);
 }
 
 // ── MATCHES ──
@@ -884,7 +965,7 @@ async function respondRequest(requestId,status,telefoon){
   if(status==='accepted')showToast('✅ Geaccepteerd! Contactinfo zichtbaar.');
   else showToast('Verzoek geweigerd');
   document.querySelector('#nav-home .notif-dot')?.remove();
-  await loadPendingRequests();loadMatchesForContext();await loadMijnMatches();
+  await loadPendingRequests();loadMatchesForContext();await loadMijnMatches();await loadOverzicht();
 }
 
 // ── MIJN MATCHES ──
@@ -892,12 +973,9 @@ async function loadMijnMatches(){
   const{data:s}=await sbClient.from('carpool_requests').select('*, naar:naar_id(voornaam,gemeente,telefoon), trainingen(dag,start_tijd,zalen(naam))').eq('van_id',currentProfile.id).eq('status','accepted');
   const{data:r}=await sbClient.from('carpool_requests').select('*, van:van_id(voornaam,gemeente,telefoon), trainingen(dag,start_tijd,zalen(naam))').eq('naar_id',currentProfile.id).eq('status','accepted');
   const alle=[...(s||[]).map(x=>({naam:x.naar?.voornaam,gemeente:x.naar?.gemeente,tel:x.naar?.telefoon,training:x.trainingen})),...(r||[]).map(x=>({naam:x.van?.voornaam,gemeente:x.van?.gemeente,tel:x.van?.telefoon,training:x.trainingen}))];
-  // Mobiel
   const card=document.getElementById('mijn-matches-card');const list=document.getElementById('mijn-matches-list');
-  if(card&&list){if(!alle.length){card.style.display='none';}else{card.style.display='block';}}
-  // Desktop home tab
-  const dcard=document.getElementById('desk-mijn-matches-card');const dlist=document.getElementById('desk-mijn-matches-list');
-  if(!dcard||!dlist){if(!alle.length)return;}
+  if(!alle.length){if(card)card.style.display='none';return;}
+  if(card)card.style.display='block';
   const matchHtml=alle.map(m=>`<div class="m-row">
     <div class="avatar">${m.naam?.[0]||'?'}</div>
     <div class="m-info">
@@ -1037,9 +1115,15 @@ function kopieerTel(tel){navigator.clipboard.writeText(tel).then(()=>showToast('
 
 // ── SEIZOEN ──
 async function checkSeizoenBanner(){
-  const{data:sz}=await sbClient.from('seizoenen').select('id').eq('actief',true).single();if(!sz)return;
-  const{data:bv}=await sbClient.from('seizoen_bevestigingen').select('id').eq('profiel_id',currentProfile.id).eq('seizoen_id',sz.id).single();
-  if(!bv){document.getElementById('seizoen-banner').style.display='block';document.getElementById('desk-seizoen-banner').style.display='block';}
+  try{
+    const{data:sz,error:se}=await sbClient.from('seizoenen').select('id').eq('actief',true).single();
+    if(se||!sz)return;
+    const{data:bv}=await sbClient.from('seizoen_bevestigingen').select('id').eq('profiel_id',currentProfile.id).eq('seizoen_id',sz.id).single();
+    if(!bv){
+      document.getElementById('seizoen-banner').style.display='block';
+      document.getElementById('desk-seizoen-banner').style.display='block';
+    }
+  }catch(e){}
 }
 function downloadSjabloon(e){e.preventDefault();const wb=XLSX.utils.book_new();const ws=XLSX.utils.aoa_to_sheet([['groep','dag','start','eind','zaal'],['G1','maandag','18:00','19:30','Sporthal Nazareth'],['A2','dinsdag','19:00','21:00','Topsporthal Gent']]);ws['!cols']=[{wch:10},{wch:12},{wch:8},{wch:8},{wch:25}];XLSX.utils.book_append_sheet(wb,ws,'Uurrooster');XLSX.writeFile(wb,'rijdmee-sjabloon.xlsx');}
 function previewSeizoen(input){const file=input.files[0];if(!file)return;const reader=new FileReader();reader.onload=e=>{const wb=XLSX.read(e.target.result,{type:'array'});const ws=wb.Sheets[wb.SheetNames[0]];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});const h=(rows[0]||[]).map(x=>String(x).toLowerCase().trim());const miss=['groep','dag','start','eind','zaal'].filter(k=>!h.includes(k));if(miss.length){showToast('❌ Kolommen ontbreken: '+miss.join(', '));return;}const[gi,di,si,ei,zi]=['groep','dag','start','eind','zaal'].map(k=>h.indexOf(k));seizoenPreviewData=rows.slice(1).filter(r=>r[gi]).map(r=>({groep:String(r[gi]).trim(),dag:String(r[di]).toLowerCase().trim(),start:String(r[si]).trim(),eind:String(r[ei]).trim(),zaal:String(r[zi]).trim()}));if(!seizoenPreviewData.length){showToast('❌ Geen geldige rijen');return;}const pr=document.getElementById('seizoen-preview')||document.getElementById('seizoen-preview2');if(!pr)return;pr.innerHTML=`<div style="display:flex;gap:14px;margin-bottom:10px"><div><div style="color:var(--muted);font-size:0.7rem">Rijen</div><div style="font-size:1.2rem;font-weight:700;color:var(--blue)">${seizoenPreviewData.length}</div></div></div><div style="display:flex;gap:8px"><button class="btn btn-primary" onclick="importSeizoen()">✅ Importeren</button></div>`;pr.style.display='block';};reader.readAsArrayBuffer(file);}
