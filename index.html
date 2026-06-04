@@ -293,10 +293,11 @@ input[type=file]{background:none;border:1px dashed var(--border);color:var(--mut
 <!-- SCREEN: HOME -->
 <div class="screen active" id="screen-home">
   <div class="app-header">
-    <div>
+    <div style="flex:1">
       <div class="app-header-title">RijdMee 🤸</div>
       <div class="app-header-sub">Gymclub Nazareth</div>
     </div>
+    <button class="icon-btn" onclick="setScreen('profiel')" title="Profiel" id="profiel-icon-btn" style="display:none">👤</button>
   </div>
   <div class="scroll-content">
     <div id="seizoen-banner" style="display:none">
@@ -336,12 +337,12 @@ input[type=file]{background:none;border:1px dashed var(--border);color:var(--mut
 <div class="screen" id="screen-matches">
   <div class="app-header">
     <div class="app-header-title">🚗 Rijdgenoten</div>
-    <button class="icon-btn" onclick="openMap()" id="kaart-btn" title="Toon kaart">🗺</button>
+    <button class="icon-btn" onclick="openMap()" title="Toon kaart">🗺</button>
+    <button class="icon-btn" onclick="setScreen('profiel')" title="Profiel">👤</button>
   </div>
   <div class="scroll-content">
-    <div class="form-group">
-      <label>Kies training</label>
-      <select id="match-training-select" onchange="loadMatches()"><option value="">— Selecteer —</option></select>
+    <div style="margin-bottom:12px">
+      <div id="training-chips" style="display:flex;gap:6px;flex-wrap:wrap"></div>
     </div>
     <div id="matches-list"><div style="color:var(--muted);font-size:0.85rem">Kies een training om matches te laden.</div></div>
   </div>
@@ -395,10 +396,55 @@ input[type=file]{background:none;border:1px dashed var(--border);color:var(--mut
   <button class="nav-btn" id="nav-trainingen" onclick="setScreen('trainingen')">
     <span class="icon">📅</span>Training
   </button>
-  <button class="nav-btn" id="nav-profiel" onclick="setScreen('profiel')">
-    <span class="icon">👤</span>Profiel
-  </button>
+
 </nav>
+
+<!-- BERICHT MODAL -->
+<div class="modal-bg" id="bericht-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="bericht-modal-title">Carpool verzoek sturen</div>
+    <div class="form-group">
+      <label id="bericht-modal-label">Kort berichtje (optioneel)</label>
+      <textarea id="bericht-tekst" rows="3" placeholder="Hoi, ik rij vanuit Nazareth en kan je kind meenemen..." style="resize:none"></textarea>
+    </div>
+    <div id="bericht-geen-tel-alert" style="display:none">
+      <div class="alert a-warn" style="margin-bottom:10px">⚠️ Je hebt geen telefoonnummer ingevuld. Voeg het toe zodat de rijdgenoot je kan bereiken.</div>
+      <button class="btn btn-secondary btn-sm btn-full" onclick="setScreen('profiel');closeBerichtModal()" style="margin-bottom:10px">📞 Telefoonnummer toevoegen →</button>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-primary" id="bericht-submit-btn" onclick="submitBericht()" style="flex:1">Versturen</button>
+      <button class="btn btn-secondary" onclick="closeBerichtModal()">Annuleer</button>
+    </div>
+  </div>
+</div>
+
+<!-- AFWIJZEN MODAL -->
+<div class="modal-bg" id="afwijzen-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Verzoek afwijzen</div>
+    <div class="form-group">
+      <label>Reden (optioneel)</label>
+      <textarea id="afwijzen-tekst" rows="2" placeholder="Ik rij die dag zelf niet..." style="resize:none"></textarea>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-danger" onclick="submitAfwijzen()" style="flex:1">Afwijzen</button>
+      <button class="btn btn-secondary" onclick="closeAfwijzenModal()">Annuleer</button>
+    </div>
+  </div>
+</div>
+
+<!-- TERUGRIT MODAL -->
+<div class="modal-bg" id="terugrit-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Terugrit matchen</div>
+    <p style="font-size:0.85rem;color:var(--muted);margin-bottom:14px">Wil je ook voor de <strong style="color:var(--text)">terugrit</strong> een rijdgenoot zoeken voor deze training?</p>
+    <div id="terugrit-matches-list"><div style="color:var(--muted)">Laden...</div></div>
+    <button class="btn btn-secondary btn-full" onclick="closeTerugritModal()" style="margin-top:12px">Sluiten</button>
+  </div>
+</div>
 
 <!-- KIND MODAL -->
 <div class="modal-bg" id="kind-modal">
@@ -420,6 +466,7 @@ input[type=file]{background:none;border:1px dashed var(--border);color:var(--mut
 const DAGEN=['maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag','zondag'];
 const DAG_NL={maandag:'Ma',dinsdag:'Di',woensdag:'Wo',donderdag:'Do',vrijdag:'Vr',zaterdag:'Za',zondag:'Zo'};
 let sbClient=null,currentUser=null,currentProfile=null,currentKinderen=[];
+let berichtTarget=null,berichtTrainingId=null,afwijzenRequestId=null;
 let mapInstance=null,matchMarkers=[],radiusCircle=null;
 let userTrainingen=[],allGroepen=[],editingKindId=null,seizoenPreviewData=[];
 
@@ -498,8 +545,10 @@ function setScreen(name){
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('screen-'+name)?.classList.add('active');
   document.getElementById('nav-'+name)?.classList.add('active');
+  const pib=document.getElementById('profiel-icon-btn');
+  if(pib) pib.style.display=name==='profiel'?'none':'flex';
   if(name==='profiel')renderProfiel();
-  if(name==='admin'){showAdminSection('codes');}
+  if(name==='admin')showAdminSection('codes');
 }
 
 // ── KAART ──
@@ -524,7 +573,12 @@ function openMap(){
 function closeMap(){document.getElementById('map-overlay').classList.remove('open');}
 function updateRadius(val){
   document.getElementById('radius-value').textContent=val+' km';
-  if(radiusCircle&&currentProfile?.lat)radiusCircle.setRadius(val*1000);
+  if(radiusCircle&&currentProfile?.lat){
+    radiusCircle.setRadius(val*1000);
+    // Zoom kaart mee met straal
+    const zoom = val<=3?14:val<=7?13:val<=15?12:val<=25?11:10;
+    mapInstance.setView([currentProfile.lat,currentProfile.lng],zoom,{animate:true});
+  }
 }
 
 // ── PROFIEL LADEN ──
@@ -536,6 +590,7 @@ async function loadProfile(){
   currentKinderen=k||[];
   hideAuthScreen();
   initMap();
+  const pib=document.getElementById('profiel-icon-btn');if(pib)pib.style.display='flex';
   if(currentProfile.is_admin&&!document.getElementById('nav-admin')){
     const nav=document.getElementById('bottom-nav');
     const btn=document.createElement('button');
@@ -605,10 +660,7 @@ async function loadTrainingen(){
   const groepIds=[...new Set(currentKinderen.map(k=>k.groep_id))];
   const{data}=await sbClient.from('trainingen').select('*, zalen(naam,adres,lat,lng), groepen(naam)').in('groep_id',groepIds).eq('active',true);
   userTrainingen=data||[];
-  const sel=document.getElementById('match-training-select');
-  if(sel)sel.innerHTML='<option value="">— Selecteer training —</option>'+
-    userTrainingen.map(t=>{const k=currentKinderen.find(k=>k.groep_id===t.groep_id);
-      return`<option value="${t.id}">${DAG_NL[t.dag]||t.dag} ${t.start_tijd} · ${t.zalen?.naam||'?'} (${k?.label||t.groepen?.naam||'?'})</option>`;}).join('');
+  renderTrainingChips();
   const list=document.getElementById('trainingen-list');
   if(!list)return;
   if(!userTrainingen.length){list.innerHTML='<div class="alert a-info">Geen trainingen gevonden. Vraag de admin om het schema in te voeren.</div>';return;}
@@ -624,6 +676,43 @@ async function loadTrainingen(){
         </div>
         <button class="btn btn-primary btn-sm" onclick="setScreen('matches');document.getElementById('match-training-select').value='${t.id}';loadMatches()">🚗 Vind</button>
       </div>`;}).join('');}).join('');
+}
+function renderTrainingChips(selectedId=null){
+  const chips=document.getElementById('training-chips');
+  if(!chips||!userTrainingen.length)return;
+  chips.innerHTML=userTrainingen.map(t=>{
+    const k=currentKinderen.find(k=>k.groep_id===t.groep_id);
+    const lbl=`${DAG_NL[t.dag]||t.dag} ${t.start_tijd}`;
+    const kindLbl=k?.label||t.groepen?.naam||'?';
+    const isActive=selectedId===t.id;
+    return`<button onclick="selectTrainingChip('${t.id}',this)" data-id="${t.id}"
+      style="background:${isActive?'var(--accent)':'var(--surface2)'};color:${isActive?'#fff':'var(--muted)'};
+      border:1px solid ${isActive?'var(--accent)':'var(--border)'};
+      border-radius:20px;padding:5px 12px;font-size:0.78rem;font-family:var(--font);
+      cursor:pointer;white-space:nowrap;transition:all 0.15s;font-weight:${isActive?'600':'400'}">
+      ${lbl} <span style="opacity:0.7;font-size:0.72rem">${kindLbl}</span>
+    </button>`;
+  }).join('');
+  // Selecteer automatisch eerste chip
+  if(!selectedId&&userTrainingen.length){
+    const first=chips.querySelector('button');
+    if(first)first.click();
+  }
+}
+function selectTrainingChip(id, el){
+  document.querySelectorAll('#training-chips button').forEach(b=>{
+    b.style.background='var(--surface2)';b.style.color='var(--muted)';
+    b.style.borderColor='var(--border)';b.style.fontWeight='400';
+  });
+  el.style.background='var(--accent)';el.style.color='#fff';
+  el.style.borderColor='var(--accent)';el.style.fontWeight='600';
+  // Zet ook hidden select waarde voor compatibiliteit
+  if(!document.getElementById('match-training-select')){
+    const s=document.createElement('select');s.id='match-training-select';s.style.display='none';
+    document.body.appendChild(s);
+  }
+  document.getElementById('match-training-select').innerHTML=`<option value="${id}" selected></option>`;
+  loadMatches();
 }
 async function loadNextTraining(){
   const w=document.getElementById('next-training-widget');
@@ -725,17 +814,26 @@ async function loadMatches(){
       const inR=o.dist!==null&&o.dist<=radius/1000;
       const distStr=o.dist!==null?`${o.dist.toFixed(1)} km`:'?';
       let action='';
-      if(status==='accepted'){const tel=ac[o.id]||'';action=`<div style="text-align:right"><span class="badge b-green">✓ Match</span>${tel?`<div style="color:var(--green);font-size:0.75rem;font-weight:600;margin-top:3px">📞 ${tel}</div>`:''}</div>`;}
+      if(status==='accepted'){const tel=ac[o.id]||'';action=`<div style="text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+        <span class="badge b-green">✓ Match</span>
+        ${tel
+          ?`<button onclick="kopieerTel('${tel}')" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:var(--green);border-radius:8px;padding:3px 8px;font-size:0.75rem;font-family:var(--font);cursor:pointer;font-weight:600">📋 ${tel}</button>`
+          :`<button onclick="openBerichtModal('${o.id}','${trainingId}')" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:3px 8px;font-size:0.72rem;font-family:var(--font);cursor:pointer">⚠️ Vraag telefoonnummer</button>`}
+      </div>`;}
       else if(status==='pending')action=`<span class="badge b-blue">⏳</span>`;
       else if(status==='declined')action=`<span class="badge b-muted">✗</span>`;
-      else action=`<button class="btn btn-primary btn-sm" onclick="sendRequest('${o.id}','${trainingId}')">Vraag 🚗</button>`;
-      return`<div class="m-row">
-        <div class="avatar">${o.voornaam[0]}</div>
-        <div class="m-info">
-          <div class="m-name">${o.voornaam}</div>
-          <div class="m-meta">📍 ${o.gemeente} · ${distStr}${inR?' · <span style="color:#22c55e">✓</span>':''}</div>
+      else action=`<button class="btn btn-primary btn-sm" onclick="openBerichtModal('${o.id}','${trainingId}')">Vraag 🚗</button>`;
+      const terugritBtn=status==='accepted'||status==='pending'?`<button onclick="openTerugritModal('${trainingId}')" style="background:none;border:none;color:var(--faint);font-size:0.72rem;font-family:var(--font);cursor:pointer;padding:0;margin-top:3px">↩️ Terugrit</button>`:'';
+      return`<div style="border-bottom:1px solid var(--border)">
+        <div class="m-row" style="border:none;padding-bottom:${terugritBtn?'4px':'10px'}">
+          <div class="avatar">${o.voornaam[0]}</div>
+          <div class="m-info">
+            <div class="m-name">${o.voornaam}</div>
+            <div class="m-meta">📍 ${o.gemeente} · ${distStr}${inR?' · <span style="color:#22c55e">✓</span>':''}</div>
+          </div>
+          <div style="flex-shrink:0">${action}</div>
         </div>
-        <div style="flex-shrink:0">${action}</div>
+        ${terugritBtn?`<div style="padding-bottom:8px;padding-left:48px">${terugritBtn}</div>`:''}
       </div>`;}).join('')}`;
 }
 async function sendRequest(naarId,trainingId){
@@ -744,7 +842,7 @@ async function sendRequest(naarId,trainingId){
   showToast('✅ Verzoek verzonden!');loadMatches();
 }
 async function loadPendingRequests(){
-  const{data}=await sbClient.from('carpool_requests').select('*, van:van_id(voornaam,gemeente,telefoon), trainingen(dag,start_tijd,zalen(naam))').eq('naar_id',currentProfile.id).eq('status','pending');
+  const{data}=await sbClient.from('carpool_requests').select('*, van:van_id(voornaam,gemeente,telefoon), trainingen(dag,start_tijd,zalen(naam))').eq('naar_id',currentProfile.id).eq('status','pending').order('created_at',{ascending:false});
   const card=document.getElementById('pending-requests-card');
   const list=document.getElementById('pending-requests-list');
   if(!data?.length){if(card)card.style.display='none';return;}
@@ -754,10 +852,11 @@ async function loadPendingRequests(){
     <div class="m-info">
       <div class="m-name">${r.van?.voornaam} · ${r.van?.gemeente}</div>
       <div class="m-meta">🗓 ${r.trainingen?.dag} ${r.trainingen?.start_tijd} · ${r.trainingen?.zalen?.naam}</div>
+      ${r.bericht?`<div style="font-size:0.78rem;color:var(--text);margin-top:4px;font-style:italic">"${r.bericht}"</div>`:''}
     </div>
     <div style="display:flex;gap:5px;flex-shrink:0">
-      <button class="btn btn-success btn-sm" onclick="respondRequest('${r.id}','accepted','${r.van?.telefoon||''}')">✓</button>
-      <button class="btn btn-danger btn-sm" onclick="respondRequest('${r.id}','declined','')">✗</button>
+      <button class="btn btn-success btn-sm" onclick="respondRequest('${r.id}','accepted','${r.van?.telefoon||''}')">✓ Accepteer</button>
+      <button class="btn btn-danger btn-sm" onclick="openAfwijzenModal('${r.id}')">✗</button>
     </div>
   </div>`).join('');
   const nb=document.getElementById('nav-home');
@@ -784,7 +883,9 @@ async function loadMijnMatches(){
     <div class="m-info">
       <div class="m-name">${m.naam} · ${m.gemeente}</div>
       <div class="m-meta">🗓 ${m.training?.dag||''} ${m.training?.start_tijd||''} · ${m.training?.zalen?.naam||''}</div>
-      ${m.telefoon?`<div class="m-tel">📞 ${m.telefoon}</div>`:'<div style="color:var(--faint);font-size:0.75rem">Geen telefoonnummer</div>'}
+      ${m.telefoon
+        ?`<button onclick="kopieerTel('${m.telefoon}')" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:var(--green);border-radius:8px;padding:3px 10px;font-size:0.78rem;font-family:var(--font);cursor:pointer;font-weight:600;margin-top:4px">📋 ${m.telefoon}</button>`
+        :`<div style="color:var(--faint);font-size:0.75rem;margin-top:3px">Geen telefoonnummer — vraag via sms</div>`}
     </div>
   </div>`).join('');
 }
@@ -923,6 +1024,84 @@ async function checkSeizoenBanner(){
 function downloadSjabloon(e){e.preventDefault();const wb=XLSX.utils.book_new();const ws=XLSX.utils.aoa_to_sheet([['groep','dag','start','eind','zaal'],['G1','maandag','18:00','19:30','Sporthal Nazareth'],['A2','dinsdag','19:00','21:00','Topsporthal Gent']]);ws['!cols']=[{wch:10},{wch:12},{wch:8},{wch:8},{wch:25}];XLSX.utils.book_append_sheet(wb,ws,'Uurrooster');XLSX.writeFile(wb,'rijdmee-sjabloon.xlsx');}
 function previewSeizoen(input){const file=input.files[0];if(!file)return;const reader=new FileReader();reader.onload=e=>{const wb=XLSX.read(e.target.result,{type:'array'});const ws=wb.Sheets[wb.SheetNames[0]];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});const h=(rows[0]||[]).map(x=>String(x).toLowerCase().trim());const miss=['groep','dag','start','eind','zaal'].filter(k=>!h.includes(k));if(miss.length){showToast('❌ Kolommen ontbreken: '+miss.join(', '));return;}const[gi,di,si,ei,zi]=['groep','dag','start','eind','zaal'].map(k=>h.indexOf(k));seizoenPreviewData=rows.slice(1).filter(r=>r[gi]).map(r=>({groep:String(r[gi]).trim(),dag:String(r[di]).toLowerCase().trim(),start:String(r[si]).trim(),eind:String(r[ei]).trim(),zaal:String(r[zi]).trim()}));if(!seizoenPreviewData.length){showToast('❌ Geen geldige rijen');return;}const pr=document.getElementById('seizoen-preview');pr.innerHTML=`<div style="display:flex;gap:14px;margin-bottom:10px"><div><div style="color:var(--muted);font-size:0.7rem">Rijen</div><div style="font-size:1.2rem;font-weight:700;color:var(--blue)">${seizoenPreviewData.length}</div></div><div><div style="color:var(--muted);font-size:0.7rem">Groepen</div><div style="font-size:1.2rem;font-weight:700;color:var(--blue)">${[...new Set(seizoenPreviewData.map(r=>r.groep))].length}</div></div><div><div style="color:var(--muted);font-size:0.7rem">Zalen</div><div style="font-size:1.2rem;font-weight:700;color:var(--blue)">${[...new Set(seizoenPreviewData.map(r=>r.zaal))].length}</div></div></div><div style="display:flex;gap:8px"><button class="btn btn-primary" onclick="importSeizoen()">✅ Importeren</button><button class="btn btn-secondary" onclick="document.getElementById('seizoen-preview').style.display='none'">Annuleer</button></div>`;pr.style.display='block';};reader.readAsArrayBuffer(file);}
 async function importSeizoen(){const naam=document.getElementById('seizoen-naam').value.trim();if(!naam)return showToast('Vul seizoensnaam in');if(!seizoenPreviewData.length)return showToast('Geen data');try{await sbClient.from('trainingen').update({active:false}).eq('active',true);const{data:sz,error:se}=await sbClient.from('seizoenen').insert({naam,actief:true}).select().single();if(se)throw new Error(se.message);await sbClient.from('seizoenen').update({actief:false}).neq('id',sz.id);const{data:bg}=await sbClient.from('groepen').select('id,naam');const{data:bz}=await sbClient.from('zalen').select('id,naam');const gm={};(bg||[]).forEach(g=>gm[g.naam.toLowerCase()]=g.id);const zm={};(bz||[]).forEach(z=>zm[z.naam.toLowerCase()]=z.id);for(const n of[...new Set(seizoenPreviewData.map(r=>r.groep))].filter(g=>!gm[g.toLowerCase()])){const{data:ng}=await sbClient.from('groepen').insert({naam:n}).select().single();if(ng)gm[n.toLowerCase()]=ng.id;}for(const n of[...new Set(seizoenPreviewData.map(r=>r.zaal))].filter(z=>!zm[z.toLowerCase()])){const{data:nz}=await sbClient.from('zalen').insert({naam:n}).select().single();if(nz)zm[n.toLowerCase()]=nz.id;}const slots=seizoenPreviewData.map(r=>({groep_id:gm[r.groep.toLowerCase()],zaal_id:zm[r.zaal.toLowerCase()],dag:r.dag,start_tijd:r.start,eind_tijd:r.eind,active:true})).filter(s=>s.groep_id&&s.zaal_id);const{error:te}=await sbClient.from('trainingen').insert(slots);if(te)throw new Error(te.message);showToast(`✅ ${slots.length} trainingen geïmporteerd!`);seizoenPreviewData=[];document.getElementById('seizoen-file').value='';document.getElementById('seizoen-preview').style.display='none';loadAdminSection('seizoen');}catch(err){showToast('❌ '+err.message);}}
+
+// ── BERICHT MODAL ──
+function openBerichtModal(naarId, trainingId){
+  berichtTarget=naarId; berichtTrainingId=trainingId;
+  document.getElementById('bericht-modal-title').textContent='Carpool verzoek sturen';
+  document.getElementById('bericht-tekst').value='';
+  // Waarschuw als geen telefoonnummer
+  const geenTel=!currentProfile?.telefoon;
+  document.getElementById('bericht-geen-tel-alert').style.display=geenTel?'block':'none';
+  document.getElementById('bericht-modal').classList.add('open');
+}
+function closeBerichtModal(){document.getElementById('bericht-modal').classList.remove('open');berichtTarget=null;berichtTrainingId=null;}
+async function submitBericht(){
+  if(!berichtTarget||!berichtTrainingId)return;
+  const bericht=document.getElementById('bericht-tekst').value.trim();
+  const{error}=await sbClient.from('carpool_requests').insert({
+    van_id:currentProfile.id,naar_id:berichtTarget,
+    training_id:berichtTrainingId,status:'pending',bericht:bericht||null
+  });
+  if(error)return showToast('❌ '+error.message);
+  showToast('✅ Verzoek verzonden!');
+  closeBerichtModal();loadMatches();
+}
+
+// ── AFWIJZEN MODAL ──
+function openAfwijzenModal(requestId){
+  afwijzenRequestId=requestId;
+  document.getElementById('afwijzen-tekst').value='';
+  document.getElementById('afwijzen-modal').classList.add('open');
+}
+function closeAfwijzenModal(){document.getElementById('afwijzen-modal').classList.remove('open');afwijzenRequestId=null;}
+async function submitAfwijzen(){
+  if(!afwijzenRequestId)return;
+  const reden=document.getElementById('afwijzen-tekst').value.trim();
+  await sbClient.from('carpool_requests').update({
+    status:'declined',updated_at:new Date().toISOString(),
+    bericht:reden||null
+  }).eq('id',afwijzenRequestId);
+  showToast('Verzoek afgewezen');
+  closeAfwijzenModal();
+  document.querySelector('#nav-home .notif-dot')?.remove();
+  await loadPendingRequests();
+}
+
+// ── TERUGRIT ──
+async function openTerugritModal(trainingId){
+  document.getElementById('terugrit-modal').classList.add('open');
+  const list=document.getElementById('terugrit-matches-list');
+  list.innerHTML='<div style="color:var(--muted)">Laden... <span class="spinner"></span></div>';
+  // Zelfde logica als normale matches
+  const training=userTrainingen.find(t=>t.id===trainingId);
+  if(!training){list.innerHTML='<div style="color:var(--muted)">Training niet gevonden.</div>';return;}
+  const{data:parallel}=await sbClient.from('trainingen').select('groep_id').eq('dag',training.dag).eq('start_tijd',training.start_tijd).eq('zaal_id',training.zaal_id);
+  const groepIds=[...new Set((parallel||[]).map(t=>t.groep_id))];
+  const{data:andereK}=await sbClient.from('kinderen').select('ouder_id').in('groep_id',groepIds).neq('ouder_id',currentUser.id);
+  const ouderIds=[...new Set((andereK||[]).map(k=>k.ouder_id))];
+  if(!ouderIds.length){list.innerHTML='<div class="alert a-info">Geen rijdgenoten gevonden voor de terugrit.</div>';return;}
+  const{data:ouders}=await sbClient.from('profiles').select('id,voornaam,gemeente,lat,lng,carpool_actief').in('id',ouderIds).eq('carpool_actief',true);
+  const{data:mv}=await sbClient.from('carpool_requests').select('naar_id,status').eq('van_id',currentProfile.id).eq('training_id',trainingId+'_terug');
+  const vz={};(mv||[]).forEach(v=>{vz[v.naar_id]=v.status;});
+  list.innerHTML=(ouders||[]).map(o=>{
+    const status=vz[o.id];
+    let btn=status==='accepted'?'<span class="badge b-green">✓ Gematcht</span>':
+      status==='pending'?'<span class="badge b-blue">⏳</span>':
+      `<button class="btn btn-primary btn-sm" onclick="openBerichtModal('${o.id}','${trainingId}_terug')">Vraag ↩️</button>`;
+    return`<div class="m-row">
+      <div class="avatar">${o.voornaam[0]}</div>
+      <div class="m-info"><div class="m-name">${o.voornaam}</div><div class="m-meta">📍 ${o.gemeente}</div></div>
+      <div>${btn}</div>
+    </div>`;
+  }).join('');
+}
+function closeTerugritModal(){document.getElementById('terugrit-modal').classList.remove('open');}
+
+// ── TELEFOON KOPIËREN ──
+function kopieerTel(tel){
+  navigator.clipboard.writeText(tel).then(()=>showToast('📋 Gekopieerd: '+tel)).catch(()=>showToast('Tel: '+tel));
+}
 
 // ── UTILS ──
 function haversine(lat1,lon1,lat2,lon2){const R=6371,dLat=(lat2-lat1)*Math.PI/180,dLon=(lon2-lon1)*Math.PI/180;const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));}
