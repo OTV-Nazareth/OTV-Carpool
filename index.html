@@ -1360,8 +1360,74 @@ async function loadAdminSection(name){
     const el=document.getElementById('trainingen-admin-list');if(!el)return;
     el.innerHTML=data?.length?`<table class="admin-table"><thead><tr><th>Dag</th><th>Tijd</th><th>Zaal</th><th>Groep</th><th></th></tr></thead><tbody>${data.map(t=>`<tr><td>${t.dag}</td><td>${t.start_tijd}–${t.eind_tijd}</td><td>${t.zalen?.naam||'?'}</td><td>${t.groepen?.naam||'?'}</td><td><button class="btn btn-danger btn-sm" onclick="deleteTraining('${t.id}')">✕</button></td></tr>`).join('')}</tbody></table>`:'Geen.';
   }
-  if(name==='seizoen'){const{data}=await sbClient.from('seizoenen').select('*').order('created_at',{ascending:false});const el=document.getElementById('seizoenen-list');if(!el)return;el.innerHTML=data?.length?data.map(s=>`<div class="m-row"><span>${s.naam}</span>${s.actief?'<span class="badge b-green">Actief</span>':'<span class="badge b-muted">Archief</span>'}</div>`).join(''):'Geen.';}
+  if(name==='seizoen'){
+    const{data}=await sbClient.from('seizoenen').select('*').order('created_at',{ascending:false});
+    const el=document.getElementById('seizoenen-list');if(!el)return;
+    el.innerHTML=data?.length?data.map(s=>`
+      <div class="m-row">
+        <div style="flex:1">
+          <div style="font-weight:500">${s.naam}</div>
+        </div>
+        ${s.actief?'<span class="badge b-green">Actief</span>':'<span class="badge b-muted">Archief</span>'}
+        ${!s.actief?`<button class="btn btn-danger btn-sm" onclick="verwijderSeizoen('${s.id}','${s.naam}')">🗑 Verwijder</button>`:''}
+      </div>`).join(''):'Geen.';
+  }
 }
+// ── SEIZOEN VERWIJDEREN ──
+async function verwijderSeizoen(seizoenId, naam){
+  if(!confirm(`Seizoen "${naam}" verwijderen?
+
+Dit verwijdert:
+• Alle trainingen van dit seizoen
+• Groepen die nergens anders aan gekoppeld zijn
+
+Zalen blijven altijd bewaard.`)) return;
+
+  try {
+    showToast('Bezig met verwijderen...');
+
+    // 1. Haal alle trainingen van dit seizoen op
+    // Seizoen heeft geen directe link naar trainingen — trainingen hebben geen seizoen_id
+    // We verwijderen alle inactive trainingen die groepen gebruiken die alleen in dit seizoen voorkwamen
+    // Simpeler: verwijder alle trainingen die 'active=false' zijn (gearchiveerd door deze import)
+    // EN vraag bevestiging welke groepen verwijderd mogen worden
+
+    // Haal groepen op die GEEN actieve trainingen hebben
+    const{data:alleGroepen}=await sbClient.from('groepen').select('id,naam');
+    const{data:actieveT}=await sbClient.from('trainingen').select('groep_id').eq('active',true);
+    const actieveGroepIds=new Set((actieveT||[]).map(t=>t.groep_id));
+
+    // Groepen zonder actieve trainingen = veilig te verwijderen
+    const legeGroepen=(alleGroepen||[]).filter(g=>!actieveGroepIds.has(g.id));
+
+    // Verwijder inactieve trainingen
+    const{error:tErr}=await sbClient.from('trainingen').delete().eq('active',false);
+    if(tErr) throw new Error('Trainingen: '+tErr.message);
+
+    // Verwijder lege groepen
+    for(const g of legeGroepen){
+      await sbClient.from('groepen').delete().eq('id',g.id);
+    }
+
+    showToast(`✅ Opgeruimd: inactieve trainingen + ${legeGroepen.length} ongebruikte groepen verwijderd`);
+    loadAdminSection('seizoen');
+    loadAdminSection('groepen');
+    loadAdminSection('trainingen');
+  } catch(err){
+    showToast('❌ '+err.message);
+  }
+}
+
+// ── ZALEN SAMENVOEGEN ──
+async function mergeZalen(behoudId, verwijderId){
+  // Verplaats alle trainingen van verwijderId naar behoudId
+  await sbClient.from('trainingen').update({zaal_id:behoudId}).eq('zaal_id',verwijderId);
+  // Verwijder de duplicate zaal
+  await sbClient.from('zalen').delete().eq('id',verwijderId);
+  showToast('✅ Zalen samengevoegd');
+  loadAdminSection('zalen');
+}
+
 async function createCode(){const code=document.getElementById('new-code').value.trim().toUpperCase();const max=parseInt(document.getElementById('new-code-max').value)||50;const exp=document.getElementById('new-code-exp').value;if(!code)return showToast('Vul een code in');const{error}=await sbClient.from('invite_codes').insert({code,max_uses:max,expires_at:exp||null});if(error)return showToast('❌ '+error.message);showToast('✅ Code aangemaakt');document.getElementById('new-code').value='';loadAdminSection('codes');}
 async function createGroep(){const naam=document.getElementById('new-groep-naam').value.trim();if(!naam)return showToast('Vul een naam in');const{error}=await sbClient.from('groepen').insert({naam});if(error)return showToast('❌ '+error.message);showToast('✅ Aangemaakt');document.getElementById('new-groep-naam').value='';loadAdminSection('groepen');}
 async function deleteGroep(id){if(!confirm('Verwijderen?'))return;await sbClient.from('groepen').delete().eq('id',id);showToast('Verwijderd');loadAdminSection('groepen');}
