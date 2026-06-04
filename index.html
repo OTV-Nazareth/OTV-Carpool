@@ -290,25 +290,55 @@ input[type=file]{background:none;border:1px dashed var(--border);color:var(--mut
     <button class="icon-btn" onclick="openDeskProfiel()" title="Profiel">👤</button>
     <button class="icon-btn" id="desk-admin-btn" onclick="openDeskAdmin()" title="Admin" style="display:none">⚙️</button>
   </div>
+  <div id="desk-tabs" style="display:flex;border-bottom:1px solid var(--border);flex-shrink:0">
+    <button class="desk-tab active" onclick="switchDeskTab('matches')" id="desk-tab-matches" style="flex:1;padding:10px 6px;background:none;border:none;color:var(--muted);font-family:var(--font);font-size:0.78rem;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;transition:all 0.2s;letter-spacing:0.03em">🚗 Rijdgenoten</button>
+    <button class="desk-tab" onclick="switchDeskTab('home')" id="desk-tab-home" style="flex:1;padding:10px 6px;background:none;border:none;color:var(--muted);font-family:var(--font);font-size:0.78rem;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;transition:all 0.2s;letter-spacing:0.03em">🏠 Home</button>
+    <button class="desk-tab" onclick="switchDeskTab('admin')" id="desk-tab-admin" style="display:none;flex:1;padding:10px 6px;background:none;border:none;color:var(--muted);font-family:var(--font);font-size:0.78rem;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;transition:all 0.2s;letter-spacing:0.03em">⚙️ Admin</button>
+  </div>
   <div id="desk-body">
-    <div id="desk-seizoen-banner" style="display:none">
-      <div class="alert a-warn" style="flex-direction:column;gap:8px;display:flex">
-        <strong>🔄 Nieuw seizoen!</strong>
-        <button class="btn btn-primary btn-sm" style="align-self:flex-start" onclick="openDeskProfiel();document.getElementById('desk-seizoen-banner').style.display='none'">Groep herbevestigen →</button>
+    <!-- TAB: MATCHES -->
+    <div id="desk-tab-content-matches">
+      <div id="desk-seizoen-banner" style="display:none">
+        <div class="alert a-warn" style="flex-direction:column;gap:8px;display:flex">
+          <strong>🔄 Nieuw seizoen!</strong>
+          <button class="btn btn-primary btn-sm" style="align-self:flex-start" onclick="openDeskProfiel();document.getElementById('desk-seizoen-banner').style.display='none'">Groep herbevestigen →</button>
+        </div>
+      </div>
+      <div id="desk-geen-kinderen" style="display:none"><div class="alert a-warn">👶 Voeg eerst een kind toe via je profiel.</div></div>
+      <div id="desk-pending-card" style="display:none;margin-bottom:14px">
+        <div class="sec"><div class="sec-title">🔔 Verzoeken</div></div>
+        <div id="desk-pending-list"></div>
+      </div>
+      <div id="desk-matches-card" style="display:none">
+        <div id="desk-training-chips" class="chips"></div>
+        <div style="margin-bottom:10px">
+          <div class="rr"><label style="margin:0">📍 Straal</label><span id="desk-radius-val" style="color:var(--accent);font-weight:700">5 km</span></div>
+          <input type="range" id="desk-radius-slider" min="1" max="30" value="5" oninput="updateDesktopRadius(this.value)" style="width:100%">
+        </div>
+        <div id="desk-matches-list"><div style="color:var(--muted);font-size:0.85rem">Kies een training.</div></div>
       </div>
     </div>
-    <div id="desk-geen-kinderen" style="display:none"><div class="alert a-warn">👶 Voeg eerst een kind toe via je profiel.</div></div>
-    <div id="desk-pending-card" style="display:none;margin-bottom:14px">
-      <div class="sec"><div class="sec-title">🔔 Verzoeken</div></div>
-      <div id="desk-pending-list"></div>
-    </div>
-    <div id="desk-matches-card" style="display:none">
-      <div id="desk-training-chips" class="chips"></div>
-      <div style="margin-bottom:10px">
-        <div class="rr"><label style="margin:0">📍 Straal</label><span id="desk-radius-val" style="color:var(--accent);font-weight:700">5 km</span></div>
-        <input type="range" id="desk-radius-slider" min="1" max="30" value="5" oninput="updateDesktopRadius(this.value)" style="width:100%">
+    <!-- TAB: HOME -->
+    <div id="desk-tab-content-home" style="display:none">
+      <div id="desk-mijn-matches-card" style="display:none;margin-bottom:14px">
+        <div class="sec"><div class="sec-title">✅ Mijn matches</div></div>
+        <div id="desk-mijn-matches-list"></div>
       </div>
-      <div id="desk-matches-list"><div style="color:var(--muted);font-size:0.85rem">Kies een training.</div></div>
+      <div id="desk-next-training-card" style="display:none">
+        <div class="sec"><div class="sec-title">📅 Volgende training</div></div>
+        <div class="card"><div id="desk-next-training-widget"></div></div>
+      </div>
+    </div>
+    <!-- TAB: ADMIN -->
+    <div id="desk-tab-content-admin" style="display:none">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
+        <button class="btn btn-primary btn-sm" onclick="showAdminSection('codes','desk-admin-inline-section')">Codes</button>
+        <button class="btn btn-secondary btn-sm" onclick="showAdminSection('groepen','desk-admin-inline-section')">Groepen</button>
+        <button class="btn btn-secondary btn-sm" onclick="showAdminSection('zalen','desk-admin-inline-section')">Zalen</button>
+        <button class="btn btn-secondary btn-sm" onclick="showAdminSection('trainingen','desk-admin-inline-section')">Trainingen</button>
+        <button class="btn btn-secondary btn-sm" onclick="showAdminSection('seizoen','desk-admin-inline-section')">🔄 Seizoen</button>
+      </div>
+      <div id="desk-admin-inline-section"></div>
     </div>
   </div>
 </div>
@@ -558,14 +588,27 @@ async function register(){
 }
 async function logout(){await sbClient.auth.signOut();currentUser=null;currentProfile=null;currentKinderen=[];showAuthScreen();if(!isDesktop())setScreen('home');}
 
+// ── DESKTOP TABS ──
+function switchDeskTab(name){
+  ['matches','home','admin'].forEach(t=>{
+    const btn=document.getElementById('desk-tab-'+t);
+    const content=document.getElementById('desk-tab-content-'+t);
+    const isActive=t===name;
+    if(btn){btn.style.color=isActive?'var(--accent)':'var(--muted)';btn.style.borderBottomColor=isActive?'var(--accent)':'transparent';}
+    if(content)content.style.display=isActive?'block':'none';
+  });
+  if(name==='admin')showAdminSection('codes','desk-admin-inline-section');
+}
+
 // ── LAYOUT init ──
 function initLayout(){
   if(isDesktop()){
-    // Desktop: toon panel en kaart
     document.getElementById('desk-topbar').style.display='flex';
     document.getElementById('desk-panel').style.display='flex';
     document.getElementById('bottom-nav').style.display='none';
     initDesktopMap();
+    // Verwijder admin-knop rechtsboven (zit nu als tab)
+    const dab=document.getElementById('desk-admin-btn');if(dab)dab.style.display='none';
   }else{
     document.getElementById('bottom-nav').style.display='flex';
   }
@@ -582,7 +625,8 @@ async function loadProfile(){
   initLayout();
   const pib=document.getElementById('mob-profiel-btn');if(pib)pib.style.display='flex';
   if(currentProfile.is_admin){
-    document.getElementById('desk-admin-btn')?.style&&(document.getElementById('desk-admin-btn').style.display='flex');
+    // Toon admin tab in desktop panel
+    const dat=document.getElementById('desk-tab-admin');if(dat)dat.style.display='flex';
     const nav=document.getElementById('bottom-nav');
     if(!document.getElementById('nav-admin')&&!isDesktop()){
       const btn=document.createElement('button');btn.className='nav-btn';btn.id='nav-admin';
@@ -621,7 +665,7 @@ function initMobMap(){
 }
 function addOwnMarker(map){
   L.marker([currentProfile.lat,currentProfile.lng],{
-    icon:L.divIcon({html:'<div style="background:#e94560;border:2.5px solid white;border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 2px 8px rgba(233,69,96,0.5)">🏠</div>',iconSize:[34,34],iconAnchor:[17,17],className:''})
+    icon:L.divIcon({html:'<div style="background:#e94560;border:2.5px solid white;border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 2px 8px rgba(233,69,96,0.5)">🏠</div>',iconSize:[34,34],iconAnchor:[17,34],className:''})
   }).addTo(map).bindPopup('📍 Jij');
 }
 function openMap(){
@@ -691,6 +735,8 @@ function renderTrainingenList(){
 }
 async function loadNextTraining(){
   const w=document.getElementById('next-training-widget');
+  const dw=document.getElementById('desk-next-training-widget');
+  const dcard2=document.getElementById('desk-next-training-card');
   const card=document.getElementById('next-training-card');
   if(!w||!userTrainingen.length){if(card)card.style.display='none';return;}
   card.style.display='block';
@@ -701,12 +747,14 @@ async function loadNextTraining(){
   if(!found){w.innerHTML='<div style="color:var(--muted);font-size:0.85rem">Geen komende training.</div>';return;}
   const{slot,daysAway}=found;const when=daysAway===0?'Vanavond':daysAway===1?'Morgen':`Over ${daysAway} dagen`;
   const k=currentKinderen.find(k=>k.groep_id===slot.groep_id);
-  w.innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+  const ntwHtml=`<div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
     <div><div style="font-size:1.5rem;font-weight:700;color:var(--blue)">${slot.start_tijd}</div>
     <div style="color:var(--muted);font-size:0.78rem;margin-top:2px">${when} · ${slot.zalen?.naam||'?'}</div>
     <div style="margin-top:5px"><span class="badge b-red">${k?.label||slot.groepen?.naam||'?'}</span></div></div>
     <button class="btn btn-primary btn-sm" onclick="setScreen('matches');selectChip('${slot.id}','mob-training-chips')">🚗 Vind rijdgenoot</button>
   </div>`;
+  if(w)w.innerHTML=ntwHtml;
+  if(dw){dw.innerHTML=ntwHtml;if(dcard2)dcard2.style.display='block';}
 }
 
 // ── MATCHES ──
@@ -751,8 +799,13 @@ async function loadMatches(listId,sliderId,map,markers,circle,setCircle){
       const bg=isMatch?'#22c55e':inR?'#4cc9f0':'#94a3b8';
       const tel=isMatch&&ac[o.id]?`<br><b style="color:#22c55e">📞 ${ac[o.id]}</b>`:'';
       const popup=`<div style="font-family:Outfit,sans-serif;min-width:120px"><b>${o.voornaam}</b><br><span style="color:#666;font-size:0.8em">📍 ${o.gemeente}</span>${o.dist!==null?`<br><span style="font-size:0.78em">${o.dist.toFixed(1)} km</span>`:''}${tel}</div>`;
+      // Kleine jitter zodat markers niet exact overlappen
+      const jitter=i=>((i*137.5)%1-0.5)*0.0004;
+      const idx=om.indexOf(o);
+      const jLat=o.lat+jitter(idx+1);
+      const jLng=o.lng+jitter(idx+3);
       const icon=`<div style="background:${bg};border:2.5px solid white;border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 2px 6px rgba(0,0,0,0.35);cursor:pointer">${emoji}</div>`;
-      const m=L.marker([o.lat,o.lng],{icon:L.divIcon({html:icon,iconSize:[34,34],iconAnchor:[17,17],className:''})}).addTo(map).bindPopup(popup);
+      const m=L.marker([jLat,jLng],{icon:L.divIcon({html:icon,iconSize:[34,34],iconAnchor:[17,34],className:''})}).addTo(map).bindPopup(popup);
       markers.push(m);
     });
   }
@@ -820,6 +873,8 @@ async function loadPendingRequests(){
       <button class="btn btn-danger btn-sm" onclick="openAfwijzenModal('${r.id}')">✗</button>
     </div>
   </div>`).join('');
+  if(list)list.innerHTML=matchHtml;
+  if(dlist){dlist.innerHTML=matchHtml;if(dcard)dcard.style.display=alle.length?'block':'none';}
   listIds.forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=html;});
   const nb=document.getElementById('nav-home');
   if(nb&&!nb.querySelector('.notif-dot')){const d=document.createElement('span');d.className='notif-dot';nb.appendChild(d);}
@@ -837,11 +892,13 @@ async function loadMijnMatches(){
   const{data:s}=await sbClient.from('carpool_requests').select('*, naar:naar_id(voornaam,gemeente,telefoon), trainingen(dag,start_tijd,zalen(naam))').eq('van_id',currentProfile.id).eq('status','accepted');
   const{data:r}=await sbClient.from('carpool_requests').select('*, van:van_id(voornaam,gemeente,telefoon), trainingen(dag,start_tijd,zalen(naam))').eq('naar_id',currentProfile.id).eq('status','accepted');
   const alle=[...(s||[]).map(x=>({naam:x.naar?.voornaam,gemeente:x.naar?.gemeente,tel:x.naar?.telefoon,training:x.trainingen})),...(r||[]).map(x=>({naam:x.van?.voornaam,gemeente:x.van?.gemeente,tel:x.van?.telefoon,training:x.trainingen}))];
+  // Mobiel
   const card=document.getElementById('mijn-matches-card');const list=document.getElementById('mijn-matches-list');
-  if(!card||!list)return;
-  if(!alle.length){card.style.display='none';return;}
-  card.style.display='block';
-  list.innerHTML=alle.map(m=>`<div class="m-row">
+  if(card&&list){if(!alle.length){card.style.display='none';}else{card.style.display='block';}}
+  // Desktop home tab
+  const dcard=document.getElementById('desk-mijn-matches-card');const dlist=document.getElementById('desk-mijn-matches-list');
+  if(!dcard||!dlist){if(!alle.length)return;}
+  const matchHtml=alle.map(m=>`<div class="m-row">
     <div class="avatar">${m.naam?.[0]||'?'}</div>
     <div class="m-info">
       <div class="m-name">${m.naam} · ${m.gemeente}</div>
@@ -994,7 +1051,7 @@ function showAdminSection(name,sectionId){
   if(name==='codes')s.innerHTML=`<div class="card"><div class="card-label">Nieuwe code</div><div class="g2"><div class="form-group"><label>Code</label><input type="text" id="new-code" placeholder="GYMCLUB-2025" style="text-transform:uppercase"></div><div class="form-group"><label>Max gebruik</label><input type="number" id="new-code-max" value="50"></div></div><div class="form-group"><label>Vervaldatum (opt.)</label><input type="date" id="new-code-exp"></div><button class="btn btn-primary" onclick="createCode()">Aanmaken</button></div><div class="card"><div class="card-label">Codes</div><div id="codes-list">Laden...</div></div>`;
   if(name==='groepen')s.innerHTML=`<div class="card"><div class="card-label">Nieuwe groep</div><div class="form-group"><label>Naam</label><input type="text" id="new-groep-naam" placeholder="G1, A2..."></div><button class="btn btn-primary" onclick="createGroep()">Aanmaken</button></div><div class="card"><div class="card-label">Groepen</div><div id="groepen-list">Laden...</div></div>`;
   if(name==='zalen')s.innerHTML=`<div class="card"><div class="card-label">Nieuwe zaal</div><div class="form-group"><label>Naam</label><input type="text" id="new-zaal-naam" placeholder="Sporthal Nazareth"></div><div class="form-group"><label>Adres</label><input type="text" id="new-zaal-adres" placeholder="Sportlaan 1, 9810 Nazareth"></div><button class="btn btn-primary" onclick="createZaal()">Aanmaken</button></div><div class="card"><div class="card-label">Zalen</div><div id="zalen-list">Laden...</div></div>`;
-  if(name==='trainingen')s.innerHTML=`<div class="card"><div class="card-label">Nieuw slot</div><div class="g2"><div class="form-group"><label>Groep</label><select id="new-t-groep"></select></div><div class="form-group"><label>Zaal</label><select id="new-t-zaal"></select></div></div><div class="form-group"><label>Dag</label><select id="new-t-dag">${DAGEN.map(d=>`<option value="${d}">${d.charAt(0).toUpperCase()+d.slice(1)}</option>`).join('')}</select></div><div class="g2"><div class="form-group"><label>Start</label><input type="time" id="new-t-start" value="18:00"></div><div class="form-group"><label>Eind</label><input type="time" id="new-t-eind" value="20:00"></div></div><button class="btn btn-primary" onclick="createTraining()">Aanmaken</button></div><div class="card"><div class="card-label">Trainingen</div><div id="trainingen-admin-list">Laden...</div></div>`;
+  if(name==='trainingen')s.innerHTML=`<div class="card"><div class="card-label">Nieuw slot</div><div class="g2"><div class="form-group"><label>Groep</label><select id="new-t-groep"><option value="">Laden...</option></select></div><div class="form-group"><label>Zaal</label><select id="new-t-zaal"><option value="">Laden...</option></select></div></div><div class="form-group"><label>Dag</label><select id="new-t-dag">${DAGEN.map(d=>`<option value="${d}">${d.charAt(0).toUpperCase()+d.slice(1)}</option>`).join('')}</select></div><div class="g2"><div class="form-group"><label>Start</label><input type="time" id="new-t-start" value="18:00"></div><div class="form-group"><label>Eind</label><input type="time" id="new-t-eind" value="20:00"></div></div><button class="btn btn-primary" onclick="createTraining()">Aanmaken</button></div><div class="card"><div class="card-label">Trainingen</div><div id="trainingen-admin-list">Laden...</div></div>`;
   if(name==='seizoen')s.innerHTML=`<div class="card"><div class="card-label">🔄 Nieuw seizoen</div><div class="alert a-warn">⚠️ Archiveert alle huidige trainingen.</div><div class="form-group"><label>Seizoensnaam</label><input type="text" id="seizoen-naam" placeholder="2025-2026"></div><div class="form-group"><label>Excel bestand</label><input type="file" id="seizoen-file" accept=".xlsx,.xls" onchange="previewSeizoen(this)"></div><div id="seizoen-preview" style="display:none;margin-top:10px"></div><button class="btn btn-secondary btn-sm" onclick="downloadSjabloon(event)" style="margin-top:8px">📥 Sjabloon</button></div><div class="card"><div class="card-label">Seizoenen</div><div id="seizoenen-list">Laden...</div></div>`;
   loadAdminSection(name);
 }
@@ -1002,7 +1059,20 @@ async function loadAdminSection(name){
   if(name==='codes'){const{data}=await sbClient.from('invite_codes').select('*').order('created_at',{ascending:false});const el=document.getElementById('codes-list');if(!el)return;el.innerHTML=data?.length?`<table class="admin-table"><thead><tr><th>Code</th><th>Gebruik</th><th>Vervalt</th></tr></thead><tbody>${data.map(c=>`<tr><td><code style="color:var(--accent)">${c.code}</code></td><td>${c.used_count}/${c.max_uses}</td><td>${c.expires_at?new Date(c.expires_at).toLocaleDateString('nl-BE'):'—'}</td></tr>`).join('')}</tbody></table>`:'Nog geen codes.';}
   if(name==='groepen'){const{data}=await sbClient.from('groepen').select('*').order('naam');const el=document.getElementById('groepen-list');if(!el)return;el.innerHTML=data?.map(g=>`<div class="m-row"><span>${g.naam}</span><button class="btn btn-danger btn-sm" onclick="deleteGroep('${g.id}')">✕</button></div>`).join('')||'Geen.';const sel=document.getElementById('new-t-groep');if(sel&&data)sel.innerHTML=data.map(g=>`<option value="${g.id}">${g.naam}</option>`).join('');}
   if(name==='zalen'){const{data}=await sbClient.from('zalen').select('*').order('naam');const el=document.getElementById('zalen-list');if(!el)return;el.innerHTML=data?.map(z=>`<div class="m-row"><div><div>${z.naam}</div><div style="color:var(--muted);font-size:0.75rem">${z.adres||''}</div></div></div>`).join('')||'Geen.';const sel=document.getElementById('new-t-zaal');if(sel&&data)sel.innerHTML=data.map(z=>`<option value="${z.id}">${z.naam}</option>`).join('');}
-  if(name==='trainingen'){const{data}=await sbClient.from('trainingen').select('*, groepen(naam), zalen(naam)').eq('active',true).order('dag');const el=document.getElementById('trainingen-admin-list');if(!el)return;el.innerHTML=data?.length?`<table class="admin-table"><thead><tr><th>Dag</th><th>Tijd</th><th>Zaal</th><th>Groep</th><th></th></tr></thead><tbody>${data.map(t=>`<tr><td>${t.dag}</td><td>${t.start_tijd}–${t.eind_tijd}</td><td>${t.zalen?.naam||'?'}</td><td>${t.groepen?.naam||'?'}</td><td><button class="btn btn-danger btn-sm" onclick="deleteTraining('${t.id}')">✕</button></td></tr>`).join('')}</tbody></table>`:'Geen.';loadAdminSection('groepen');loadAdminSection('zalen');}
+  if(name==='trainingen'){
+    // Laad eerst groepen en zalen parallel, dan pas trainingen
+    const[{data:gr},{data:za},{data}]=await Promise.all([
+      sbClient.from('groepen').select('*').order('naam'),
+      sbClient.from('zalen').select('*').order('naam'),
+      sbClient.from('trainingen').select('*, groepen(naam), zalen(naam)').eq('active',true).order('dag')
+    ]);
+    const gSel=document.getElementById('new-t-groep');
+    const zSel=document.getElementById('new-t-zaal');
+    if(gSel&&gr) gSel.innerHTML=gr.length?gr.map(g=>`<option value="${g.id}">${g.naam}</option>`).join(''):'<option value="">Eerst groepen aanmaken</option>';
+    if(zSel&&za) zSel.innerHTML=za.length?za.map(z=>`<option value="${z.id}">${z.naam}</option>`).join(''):'<option value="">Eerst zalen aanmaken</option>';
+    const el=document.getElementById('trainingen-admin-list');if(!el)return;
+    el.innerHTML=data?.length?`<table class="admin-table"><thead><tr><th>Dag</th><th>Tijd</th><th>Zaal</th><th>Groep</th><th></th></tr></thead><tbody>${data.map(t=>`<tr><td>${t.dag}</td><td>${t.start_tijd}–${t.eind_tijd}</td><td>${t.zalen?.naam||'?'}</td><td>${t.groepen?.naam||'?'}</td><td><button class="btn btn-danger btn-sm" onclick="deleteTraining('${t.id}')">✕</button></td></tr>`).join('')}</tbody></table>`:'Geen.';
+  }
   if(name==='seizoen'){const{data}=await sbClient.from('seizoenen').select('*').order('created_at',{ascending:false});const el=document.getElementById('seizoenen-list');if(!el)return;el.innerHTML=data?.length?data.map(s=>`<div class="m-row"><span>${s.naam}</span>${s.actief?'<span class="badge b-green">Actief</span>':'<span class="badge b-muted">Archief</span>'}</div>`).join(''):'Geen.';}
 }
 async function createCode(){const code=document.getElementById('new-code').value.trim().toUpperCase();const max=parseInt(document.getElementById('new-code-max').value)||50;const exp=document.getElementById('new-code-exp').value;if(!code)return showToast('Vul een code in');const{error}=await sbClient.from('invite_codes').insert({code,max_uses:max,expires_at:exp||null});if(error)return showToast('❌ '+error.message);showToast('✅ Code aangemaakt');document.getElementById('new-code').value='';loadAdminSection('codes');}
