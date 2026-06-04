@@ -927,6 +927,10 @@ async function loadMatches(listId,sliderId,map,markers,circle,setCircle){
   if(!ouders?.length){list.innerHTML='<div class="alert a-info">Geen beschikbare rijdgenoten.</div>';return;}
   const slider=document.getElementById(sliderId);
   const radius=slider?parseInt(slider.value)*1000:5000;
+  // actLat/actLng VOOR gebruik ervan
+  const _actAdres=getActiefAdres();
+  const actLat=_actAdres?.lat||currentProfile?.lat||null;
+  const actLng=_actAdres?.lng||currentProfile?.lng||null;
   let newCircle=null;
   if(actLat&&map){
     newCircle=L.circle([actLat,actLng],{radius,color:'#e94560',fillColor:'#e94560',fillOpacity:0.07,weight:1.5}).addTo(map);
@@ -937,9 +941,6 @@ async function loadMatches(listId,sliderId,map,markers,circle,setCircle){
   const acceptedIds=(mv||[]).filter(v=>v.status==='accepted').map(v=>v.naar_id);
   const ac={};
   if(acceptedIds.length){const{data:ct}=await sbClient.from('profiles').select('id,telefoon').in('id',acceptedIds);(ct||[]).forEach(c=>{ac[c.id]=c.telefoon||'';});}
-  const _actAdres=getActiefAdres();
-  const actLat=_actAdres?.lat||currentProfile?.lat||null;
-  const actLng=_actAdres?.lng||currentProfile?.lng||null;
   const om=ouders.map(o=>({...o,dist:actLat&&o.lat?haversine(actLat,actLng,o.lat,o.lng):null})).sort((a,b)=>(a.dist??999)-(b.dist??999));
   // Markers op kaart
   if(map){
@@ -1208,18 +1209,37 @@ async function saveAdres(){
 }
 
 async function loadAdressen(){
-  const{data}=await sbClient.from('adressen').select('*').eq('profiel_id',currentUser.id).order('created_at');
-  currentAdressen=data||[];
-  // Als geen adressen: maak er één aan vanuit het profiel
-  if(!currentAdressen.length&&currentProfile?.straat){
-    await sbClient.from('adressen').insert({
-      profiel_id:currentUser.id,label:'Thuis',
-      straat:currentProfile.straat,huisnummer:currentProfile.huisnummer||null,
-      gemeente:currentProfile.gemeente,postcode:currentProfile.postcode||null,
-      lat:currentProfile.lat,lng:currentProfile.lng,actief:true
-    });
-    const{data:d2}=await sbClient.from('adressen').select('*').eq('profiel_id',currentUser.id).order('created_at');
-    currentAdressen=d2||[];
+  try{
+    const{data,error}=await sbClient.from('adressen').select('*').eq('profiel_id',currentUser.id).order('created_at');
+    if(error){
+      // Tabel bestaat nog niet (406) — val terug op profiel adres
+      currentAdressen=[{
+        id:'profiel',profiel_id:currentUser.id,label:'Thuis',
+        straat:currentProfile?.straat||'',huisnummer:currentProfile?.huisnummer||null,
+        gemeente:currentProfile?.gemeente||'',postcode:currentProfile?.postcode||null,
+        lat:currentProfile?.lat||null,lng:currentProfile?.lng||null,actief:true
+      }];
+      return;
+    }
+    currentAdressen=data||[];
+    // Als geen adressen: maak er één aan vanuit het profiel
+    if(!currentAdressen.length&&currentProfile?.straat){
+      await sbClient.from('adressen').insert({
+        profiel_id:currentUser.id,label:'Thuis',
+        straat:currentProfile.straat,huisnummer:currentProfile.huisnummer||null,
+        gemeente:currentProfile.gemeente,postcode:currentProfile.postcode||null,
+        lat:currentProfile.lat,lng:currentProfile.lng,actief:true
+      });
+      const{data:d2}=await sbClient.from('adressen').select('*').eq('profiel_id',currentUser.id).order('created_at');
+      currentAdressen=d2||[];
+    }
+  }catch(e){
+    // Fallback op profiel adres als alles faalt
+    currentAdressen=[{
+      id:'profiel',profiel_id:currentUser.id,label:'Thuis',
+      straat:currentProfile?.straat||'',gemeente:currentProfile?.gemeente||'',
+      lat:currentProfile?.lat||null,lng:currentProfile?.lng||null,actief:true
+    }];
   }
 }
 
