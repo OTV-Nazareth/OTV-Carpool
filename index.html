@@ -1345,7 +1345,33 @@ function showAdminSection(name,sectionId){
 async function loadAdminSection(name){
   if(name==='codes'){const{data}=await sbClient.from('invite_codes').select('*').order('created_at',{ascending:false});const el=document.getElementById('codes-list');if(!el)return;el.innerHTML=data?.length?`<table class="admin-table"><thead><tr><th>Code</th><th>Gebruik</th><th>Vervalt</th></tr></thead><tbody>${data.map(c=>`<tr><td><code style="color:var(--accent)">${c.code}</code></td><td>${c.used_count}/${c.max_uses}</td><td>${c.expires_at?new Date(c.expires_at).toLocaleDateString('nl-BE'):'—'}</td></tr>`).join('')}</tbody></table>`:'Nog geen codes.';}
   if(name==='groepen'){const{data}=await sbClient.from('groepen').select('*').order('naam');const el=document.getElementById('groepen-list');if(!el)return;el.innerHTML=data?.map(g=>`<div class="m-row"><span>${g.naam}</span><button class="btn btn-danger btn-sm" onclick="deleteGroep('${g.id}')">✕</button></div>`).join('')||'Geen.';const sel=document.getElementById('new-t-groep');if(sel&&data)sel.innerHTML=data.map(g=>`<option value="${g.id}">${g.naam}</option>`).join('');}
-  if(name==='zalen'){const{data}=await sbClient.from('zalen').select('*').order('naam');const el=document.getElementById('zalen-list');if(!el)return;el.innerHTML=data?.map(z=>`<div class="m-row"><div><div>${z.naam}</div><div style="color:var(--muted);font-size:0.75rem">${z.adres||''}</div></div></div>`).join('')||'Geen.';const sel=document.getElementById('new-t-zaal');if(sel&&data)sel.innerHTML=data.map(z=>`<option value="${z.id}">${z.naam}</option>`).join('');}
+  if(name==='zalen'){
+    const{data}=await sbClient.from('zalen').select('*').order('naam');
+    const el=document.getElementById('zalen-list');if(!el)return;
+    // Detecteer duplicaten op naam (case-insensitive)
+    const namenMap={};
+    (data||[]).forEach(z=>{const k=z.naam.toLowerCase().trim();(namenMap[k]=namenMap[k]||[]).push(z);});
+    el.innerHTML=(data||[]).map(z=>{
+      const dupes=namenMap[z.naam.toLowerCase().trim()]||[];
+      const isDupe=dupes.length>1;
+      const behoud=dupes[0]; // eerste = te bewaren
+      const isVerwijder=isDupe&&z.id!==behoud.id;
+      return`<div class="m-row" style="${isDupe?'background:rgba(247,183,49,0.07);border-radius:8px;padding:6px 8px;margin-bottom:4px;':''}">
+        <div style="flex:1">
+          <div style="font-weight:500;display:flex;align-items:center;gap:6px">
+            ${z.naam}
+            ${isDupe?`<span class="badge b-gold" style="font-size:0.65rem">${isVerwijder?'Duplicaat':'Origineel'}</span>`:''}
+          </div>
+          <div style="color:var(--muted);font-size:0.75rem">${z.adres||'Geen adres'} ${z.lat?'✅':''}</div>
+        </div>
+        <div style="display:flex;gap:5px;flex-shrink:0">
+          ${isVerwijder?`<button class="btn btn-secondary btn-sm" style="font-size:0.72rem" onclick="mergeZalen('${behoud.id}','${z.id}')">↩ Merge</button>`:''}
+        </div>
+      </div>`;
+    }).join('')||'Geen zalen.';
+    const sel=document.getElementById('new-t-zaal');
+    if(sel&&data)sel.innerHTML=data.map(z=>`<option value="${z.id}">${z.naam}</option>`).join('');
+  }
   if(name==='trainingen'){
     // Laad eerst groepen en zalen parallel, dan pas trainingen
     const[{data:gr},{data:za},{data}]=await Promise.all([
@@ -1369,7 +1395,7 @@ async function loadAdminSection(name){
           <div style="font-weight:500">${s.naam}</div>
         </div>
         ${s.actief?'<span class="badge b-green">Actief</span>':'<span class="badge b-muted">Archief</span>'}
-        ${!s.actief?`<button class="btn btn-danger btn-sm" onclick="verwijderSeizoen('${s.id}','${s.naam}')">🗑 Verwijder</button>`:''}
+        <button class="btn btn-danger btn-sm" onclick="verwijderSeizoen('${s.id}','${s.naam}')">🗑 Verwijder</button>
       </div>`).join(''):'Geen.';
   }
 }
@@ -1390,30 +1416,40 @@ Zalen blijven altijd bewaard.`)) return;
     const{data:inactieveT}=await sbClient.from('trainingen').select('id,groep_id').eq('active',false);
     const inactiefIds=(inactieveT||[]).map(t=>t.id);
 
-    if(inactiefIds.length){
-      // Verwijder eerst carpool_requests die naar deze trainingen verwijzen
-      // (in batches van 20 want Supabase .in() heeft limiet)
-      for(let i=0;i<inactiefIds.length;i+=20){
-        const batch=inactiefIds.slice(i,i+20);
+    // Verwijder ALLE trainingen (actief én inactief) van dit seizoen
+    // Seizoen heeft geen training_id link, dus we verwijderen gewoon alles
+    const alleTrainingIds=[...(inactiefIds||[])];
+    // Voeg ook actieve trainingen toe als seizoenId meegegeven
+    if(seizoenId){
+      const{data:actT}=await sbClient.from('trainingen').select('id').eq('active',true);
+      (actT||[]).forEach(t=>{ if(!alleTrainingIds.includes(t.id)) alleTrainingIds.push(t.id); });
+    }
+
+    if(alleTrainingIds.length){
+      // Verwijder eerst carpool_requests (in batches van 20)
+      for(let i=0;i<alleTrainingIds.length;i+=20){
+        const batch=alleTrainingIds.slice(i,i+20);
         await sbClient.from('carpool_requests').delete().in('training_id',batch);
       }
-      // Nu pas trainingen verwijderen
-      const{error:tErr}=await sbClient.from('trainingen').delete().eq('active',false);
+      // Verwijder alle trainingen
+      const{error:tErr}=await sbClient.from('trainingen').delete().in('id',alleTrainingIds);
       if(tErr) throw new Error('Trainingen: '+tErr.message);
     }
 
-    // Haal groepen op die GEEN actieve trainingen meer hebben
+    // Verwijder groepen die nergens meer aan gekoppeld zijn
     const{data:alleGroepen}=await sbClient.from('groepen').select('id,naam');
-    const{data:actieveT}=await sbClient.from('trainingen').select('groep_id').eq('active',true);
-    const actieveGroepIds=new Set((actieveT||[]).map(t=>t.groep_id));
-    const legeGroepen=(alleGroepen||[]).filter(g=>!actieveGroepIds.has(g.id));
-
-    // Verwijder lege groepen
+    const legeGroepen=alleGroepen||[];
     for(const g of legeGroepen){
       await sbClient.from('groepen').delete().eq('id',g.id);
     }
 
-    showToast(`✅ Opgeruimd: ${inactiefIds.length} trainingen + ${legeGroepen.length} ongebruikte groepen verwijderd`);
+    // Verwijder het seizoen zelf
+    if(seizoenId){
+      await sbClient.from('seizoen_bevestigingen').delete().eq('seizoen_id',seizoenId);
+      await sbClient.from('seizoenen').delete().eq('id',seizoenId);
+    }
+
+    showToast(`✅ Volledig verwijderd: trainingen, groepen en seizoen`);
     loadAdminSection('seizoen');
     loadAdminSection('groepen');
     loadAdminSection('trainingen');
